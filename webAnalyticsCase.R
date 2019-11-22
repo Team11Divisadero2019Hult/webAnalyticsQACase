@@ -1,5 +1,3 @@
-setwd('/home/diego/bamodA/R/cases')
-
 # Weekly Visits
   # May 25 2008, Aug 29, 2009
   # Weekly Web Analytics
@@ -7,7 +5,7 @@ setwd('/home/diego/bamodA/R/cases')
 
 
 # Financials
-  # The records do not indicate which of these inquiries were generated directly from the website
+  # The records do not indicate which of tsetwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')hese inquiries were generated directly from the website
   # May 25 2008, Aug 29, 2009
   # Weekly Web Analytics
   # Revenue
@@ -37,6 +35,7 @@ library(lubridate)
 library(stringr)
 library(plotly)
 
+setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
 
 visitsWeek <- read_excel("webAnalyticsCase.xls", 
                                sheet = "Weekly Visits")
@@ -140,6 +139,11 @@ visitsFinancials$date[33:nrow(visitsFinancials)] <- paste(str_extract(visitsFina
 
 # First Exploration Iteration ---------------------------------------------
 
+
+# Website Generating Interest? --------------------------------------------
+
+
+
 # Want to know how the topline varies among the periods. This is to address the first question:
       # Is the website generating interest, and does this interest yield actual sales?
   
@@ -205,4 +209,83 @@ as.numeric(visitsFinancials$date[])
 
 cor(visitsFinancials$Revenue, visitsFinancials$`Avg. Time on Site (secs.)`)
 
+
+
+
+
+
+# How many people visit the website? How do they come to the websi --------
+
+# Load demographic Sheets
+demographicSheetNames <- excel_sheets('webAnalyticsCase.xls')[7:11]
+
+for(sheet in demographicSheetNames){
+  
+  assign(sheet,
+         read_excel('webAnalyticsCase.xls',sheet = sheet))
+  
+}
+
+# How many people visit the website? How do they come to the website?
+
+# Total number of unique visitors to the website
+    # 65,287
+  uniqueVisits<- visitsFinancials$`Unique Visits` %>% sum()
+
+# Total number of visitors to the website 
+  # 69k 
+totalVisits <- visitsFinancials$Visits %>% sum()
+
+# Number of people that return to the website # 4144
+# NEED TO DO MORE WORK, IT DOESN't SUMS UP!!
+# totalVisits - uniqueVisits
+
+# Extra QUESTION: Does the number of returning customers impacts the revenue? 
+# visitsFinancials <- mutate(visitsFinancials, 
+#                            returningVisitors = visitsFinancials$Visits - visitsFinancials$`Unique Visits` )
+####
+
+# Where do Clients come from?
+# Region
+# The website is not attracting the south asia market 
+# THIS DOESN'T MEAN THAT THIS REGIOSN DRIVE THE REVENUE
+ggplot(TopTenGeographicSources, aes(x = reorder(TopTenGeographicSources$`Top Ten Geographic Sources by Sub Continent Region`,-Visits),
+                                    y = Visits)) + 
+  geom_bar(stat = 'identity') +
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  xlab('Regions') +
+  ylab('Number of Visits') +
+  ggtitle('Visits per Region')
+
+# Referring Sites
+# Mostly Google Adwords and Google Page ad
+ggplot(TopTenReferringSites, aes(x = reorder(TopTenReferringSites$`Top Ten Referring Sites`,-Visits),
+                                    y = Visits)) + 
+  geom_bar(stat = 'identity') +
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  xlab('SEM Sources') +
+  ylab('Number of Visits') +
+  ggtitle('Visits per Referring Site')
+
+
+# Mobile Phones vs Computers 
+# Percentage of customers that used computers to visualize the webpage
+TopTenOperatingSystems$Visits[1:3] %>% sum() / TopTenOperatingSystems$Visits %>% sum() *100
+
+
+ggplot(visitsFinancials, aes(x = reorder(visitsFinancials$campaign,-Profit),
+                                 y = Profit)) + 
+  geom_bar(stat = 'identity') +
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  xlab('Regions') +
+  ylab('Profits by Promotion Period') +
+  ggtitle('Visits per Referring Site')
+
+ggplot(visitsFinancials, aes(x = reorder(visitsFinancials$campaign,- visitsFinancials$`Lbs. Sold`),
+                             y = visitsFinancials$`Lbs. Sold`)) + 
+  geom_bar(stat = 'identity') +
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  xlab('Period') +
+  ylab('Number of Pounds Sold Per Period') +
+  ggtitle('Pounds Sold By Period')
 
