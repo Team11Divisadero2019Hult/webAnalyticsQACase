@@ -35,7 +35,7 @@ library(lubridate)
 library(stringr)
 library(plotly)
 
-setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
+# setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
 
 visitsWeek <- read_excel("webAnalyticsCase.xls", 
                                sheet = "Weekly Visits")
@@ -107,11 +107,11 @@ str(visitsWeek)
 # Promotion: Jan 25 - May 23 [36:52]
 # Post Promotion: May 24 - Aug 29 [53:]
   
+visitsWeek$campaign <- 1
+visitsWeek$campaign[15:35] <- 2 
+visitsWeek$campaign[36:52] <- 3
+visitsWeek$campaign[53:nrow(visitsWeek)] <- 4
 
-visitsWeek$campaign <- 0
-visitsWeek$campaign[15:35] <- 1 
-visitsWeek$campaign[36:52] <- 2
-visitsWeek$campaign[53:nrow(visitsWeek)] <- 3
 
 
 
@@ -123,16 +123,18 @@ str(financials)
 visitsFinancials <- left_join(visitsWeek, financials, by = "Week (2008-2009)")
 
 str(visitsFinancials)
-
+colnames(visitsFinancials) <- str_replace_all(colnames(visitsFinancials),' ', '_')
+colnames(visitsFinancials)
 
 # Creation of date column with proper format (useful for plots that have time in the X axis)
       
     # Example: paste(str_extract(visitsFinancials$`Week (2008-2009)`, pattern = '\\w{3} \\d{1,2} ') ,2008) %>% parse_date_time(orders = 'mdy')
 
-visitsFinancials$date <- paste(str_extract(visitsFinancials$`Week (2008-2009)`, pattern = '\\w{3} \\d{1,2} ') ,2008) %>% 
+visitsFinancials$date <- paste(str_extract(visitsFinancials$`Week_(2008-2009)`, 
+                                           pattern = '\\w{3} \\d{1,2} ') ,2008) %>% 
   parse_date_time(orders = 'mdy')
 
-visitsFinancials$date[33:nrow(visitsFinancials)] <- paste(str_extract(visitsFinancials$`Week (2008-2009)`[33:nrow(visitsFinancials)], 
+visitsFinancials$date[33:nrow(visitsFinancials)] <- paste(str_extract(visitsFinancials$`Week_(2008-2009)`[33:nrow(visitsFinancials)], 
                                                                       pattern = '\\w{3} \\d{1,2} ') ,2009) %>% 
   parse_date_time(orders = 'mdy')
 
@@ -288,4 +290,123 @@ ggplot(visitsFinancials, aes(x = reorder(visitsFinancials$campaign,- visitsFinan
   xlab('Period') +
   ylab('Number of Pounds Sold Per Period') +
   ggtitle('Pounds Sold By Period')
+
+
+
+# Data Analysis Questions -------------------------------------------------
+Question2 <- function(){}
+# 2) Using the same data, calculate the following summary statistics for visits, unique visits,
+# revenue, profit, and pounds sold: mean, median, standard deviation, minimum, and
+# maximum, for the initial, pre-promotion, promotion, and post-promotion periods.So, for
+# each period you should provide 25 values: five summary measures for each of five variables,
+# as per the table below for the initial period.
+
+# TO DEBUG
+# visitsFinancials %>% 
+#   group_by(campaign) %>% 
+#   summarize(mean = mean(Revenue), 
+#             median = median(Revenue))
+customSummary <- function(variable){
+  visitsFinancials %>% 
+  group_by(campaign) %>% 
+  summarize(mean = mean(variable), 
+            median = median(variable), 
+            standardDev = sd(variable), 
+            Max = max(variable), 
+            Min = min(variable))
+}
+
+
+# def customSum(a):
+  # print(a)
+
+
+customSummary(Visits) 
+customSummary(Visits) 
+customSummary(visitsFinancials$Revenue) %>% View()
+customSummary(visitsFinancials$Profit) %>% View()
+customSummary(visitsFinancials$`Lbs. Sold`) %>% View()
+
+Question3<-function(){}
+# 3) Create a column chart of the mean visits over the four periods—that is, your chart should
+# have four columns, the first representing the mean visits during the initial period, the second
+# representing the mean visits during the pre-promotion period, etc. Create four more such
+# charts, this time using the mean unique visits, mean revenue, mean profit, and mean pounds
+# sold statistics
+
+campRev <-visitsFinancials %>% ggplot(aes(x = campaign,y = Revenue)) +
+  geom_bar(stat = 'summary',fun.y = 'mean')
+
+campProf <- visitsFinancials %>% ggplot(aes(x = campaign,y = Profit)) +
+  geom_bar(stat = 'summary',fun.y = 'mean')
+
+campLbs <- visitsFinancials %>% ggplot(aes(x = campaign,y = Lbs._Sold)) +
+  geom_bar(stat = 'summary',fun.y = 'mean')
+
+campVisits <- visitsFinancials %>% ggplot(aes(x = campaign,y = Visits)) +
+  geom_bar(stat = 'summary',fun.y = 'mean')
+
+campUniqueVisits<- visitsFinancials %>% ggplot(aes(x = campaign,y = Unique_Visits)) +
+  geom_bar(stat = 'summary',fun.y = 'mean')
+
+campUniqueVisits<- visitsFinancials %>% ggplot(aes(x = campaign,y = Unique_Visits)) +
+  geom_bar(stat = 'summary',fun.y = 'mean')
+
+campCost<- visitsFinancials %>% ggplot(aes(x = campaign,y = cost)) +
+  geom_bar(stat = 'summary',fun.y = 'mean')
+
+
+
+library(ggpubr)
+ggarrange(campVisits,campUniqueVisits,campLbs,campProf,campRev, campCost)
+
+
+Question4<- function(){}
+
+# 4. Analysis of Questions 1, 2 and 3
+  
+# Cost Column
+visitsFinancials <- visitsFinancials %>% 
+  mutate(cost = Revenue - Profit)
+
+# # Unit Cost Columm
+# visitsFinancials <- visitsFinancials %>%
+#   mutate(unitCost = cost/Lbs._Sold)
+# # Unit Cost don't affect profit 
+# lm(visitsFinancials$Profit ~ visitsFinancials$unitCost , 
+#    data = visitsFinancials) %>% summary()
+
+# Price
+visitsFinancials <- visitsFinancials %>% 
+  mutate(price = Revenue/Lbs._Sold)
+
+# Price Plot 
+visitsFinancials %>% ggplot(aes(y = price, x = date)) +
+  geom_line() + 
+  geom_vline(xintercept = as.numeric(visitsFinancials$date[15]), 
+             colour = 'red') +
+  geom_vline(xintercept = as.numeric(visitsFinancials$date[36]), 
+             colour = 'red') +
+  geom_vline(xintercept = as.numeric(visitsFinancials$date[53]), 
+             colour = 'red')
+# The price decreased from quarter 1 to quarter 2 (32 to 29) 
+# Cost are fluctuating at a similar level, they are not affecting the proffits (view corr with profit)
+# Pounds sold they went up by 47% in the second quarter, might be due to the price drop -- Hypothesis
+          # Revenues didn't increase by same amount!
+          # Demand is elastic, affects a lot the price
+# Price elasticity = Percentage change in quantity demanded / percentage change in price
+# library(quantmod)
+# Delt(visitsFinancials$price) 
+# The external variable 
+
+# Revenue is what's driving the profit, Lbs Sold is what's driving the revenue REFER to correlation and Elmir's explanation  
+# Sticky note -> Variables to watch out
+
+cor(visitsFinancials$price, visitsFinancials$Revenue)
+cor(visitsFinancials$Lbs._Sold, visitsFinancials$Revenue)
+
+
+# To do: Questions 5, 6, and 7. Ask Prof if we need to do Q8. Page 7
+
+
 
