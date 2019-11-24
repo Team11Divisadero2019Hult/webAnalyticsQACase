@@ -35,7 +35,7 @@ library(lubridate)
 library(stringr)
 library(plotly)
 
-# setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
+setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
 
 visitsWeek <- read_excel("webAnalyticsCase.xls", 
                                sheet = "Weekly Visits")
@@ -406,7 +406,41 @@ cor(visitsFinancials$price, visitsFinancials$Revenue)
 cor(visitsFinancials$Lbs._Sold, visitsFinancials$Revenue)
 
 
-# To do: Questions 5, 6, and 7. Ask Prof if we need to do Q8. Page 7
+Question5<- function(){}
+# Question 5, Revenue vs Lbs Sold
 
+visitsFinancials %>%
+  ggplot(aes(Lbs._Sold,Revenue)) +
+  geom_point()
+cor(visitsFinancials$Lbs._Sold, visitsFinancials$Revenue)
 
+Question6<- function(){}
+# Question 6, Revenue vs Visits
+# Insight 1: Company is paying for payperclick, people that is entering the 
+  # website are not buying products because there is no relationship with the Revenues.
+  # Hypothesis: Website might not be intuitive, might not be atractive, this is caused by something. 
+    # I.e. The website is not good enough. 
+  # Possible suggestions: 
+    # Based on the hypothesis: Do A/B testing to improve the website. Make it more interactive.  
+    # Based on insight: Keep track inquires from website to know sales conversion. In order to know
+      # how many visitors are placing orders through the website. This is to know the ROI of the 
+        # website
+    # Extra suggestion: Include "How did you hear about us" in order to better allocate resources  
+      # in marketing channels. -> Giving incentive (discount or a dollar)
 
+visitsFinancials %>%
+  ggplot(aes(Visits,Revenue)) +
+  geom_point() 
+cor(visitsFinancials$Visits, visitsFinancials$Revenue)
+cor(log(visitsFinancials$Visits), log(visitsFinancials$Revenue))
+
+visitsFinancials %>% 
+  ggplot(aes(Lbs._Sold)) +
+  geom_histogram(bins = 15, col = 'white') +
+  # geom_density(aes(y = ..density..))
+ scale_y_continuous(limits = c(0,10), breaks = seq(0, 10, by = 2)) +
+  scale_x_continuous(limits = c(0,max(visitsFinancials$Lbs._Sold)), 
+                     breaks = seq(0, max(visitsFinancials$Lbs._Sold), by = 5000))
+
+hist(visitsFinancials$Lbs._Sold, breaks = 15
+     )
