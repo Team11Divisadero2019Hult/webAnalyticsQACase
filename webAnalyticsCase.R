@@ -34,6 +34,8 @@ library(scales)
 library(lubridate)
 library(stringr)
 library(plotly)
+library(tidyr)
+
 
 setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
 
@@ -127,7 +129,8 @@ colnames(visitsFinancials) <- str_replace_all(colnames(visitsFinancials),' ', '_
 colnames(visitsFinancials)
 
 # Creation of date column with proper format (useful for plots that have time in the X axis)
-      
+  # NOTE: The first day of the week is what's transformed to Date!!!
+
     # Example: paste(str_extract(visitsFinancials$`Week (2008-2009)`, pattern = '\\w{3} \\d{1,2} ') ,2008) %>% parse_date_time(orders = 'mdy')
 
 visitsFinancials$date <- paste(str_extract(visitsFinancials$`Week_(2008-2009)`, 
@@ -137,7 +140,8 @@ visitsFinancials$date <- paste(str_extract(visitsFinancials$`Week_(2008-2009)`,
 visitsFinancials$date[33:nrow(visitsFinancials)] <- paste(str_extract(visitsFinancials$`Week_(2008-2009)`[33:nrow(visitsFinancials)], 
                                                                       pattern = '\\w{3} \\d{1,2} ') ,2009) %>% 
   parse_date_time(orders = 'mdy')
-
+# It's important to transform the POSIXct as Date format
+visitsFinancials$date <- as.Date(visitsFinancials$date)
 
 # First Exploration Iteration ---------------------------------------------
 
@@ -200,8 +204,8 @@ ggplot(visitsFinancials) +
 apply(visitsFinancials, MARGIN = 2, FUN = class)
 # colClasses <- str(visitsFinancials)
 
-lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg. Time on Site (secs.)` +
-     visitsFinancials$`Bounce Rate` + visitsFinancials$`% New Visits` + visitsFinancials$Inquiries, visitsFinancials) %>% summary()
+lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg._Time_on_Site_(secs.)` +
+     visitsFinancials$`Bounce_Rate` + visitsFinancials$`%_New_Visits` + visitsFinancials$Inquiries, visitsFinancials) %>% summary()
 
 lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg. Time on Site (secs.)` +
      visitsFinancials$`Bounce Rate` + visitsFinancials$`% New Visits` + visitsFinancials$Inquiries +
@@ -444,3 +448,194 @@ visitsFinancials %>%
 
 hist(visitsFinancials$Lbs._Sold, breaks = 15
      )
+
+
+
+
+# Business Questions ------------------------------------------------------
+
+Question3 <- function(){}
+
+
+# Do the traditional promos drive web traffic, and in turn drive incremental sales?
+#   
+#   Define traditional promos (mail, magazines adds. New paid listings - December 2008)
+# Traditional promotion -> from (may 25-may31) to  (nov 23-nov 29) 
+# Web traffic: total visits (question 2)
+# Incremental sales: differences of sales (revenues and pounds sold) between weeks/periods 
+# Change in incremental sales vs total visits
+# a) How visits varied from pre promo to post promo?
+# b)  How incremental sales varied from pre promo to post promo?
+#   
+#   Assumptions: 
+# 1) during the 4 periods, QA has done all the traditional promotions
+# 2) The brochures is the only traditional promotion that affected the increase in web visits. 
+# 
+
+
+
+ 
+
+
+# a) How visits varied from pre promo to post promo?
+# I will do a line chart with X axis as Date, Y axis as Visits and the periods will be lines
+# from (may 25-may31) to  (nov 23-nov 29) 
+
+# Initial Period: May 25 - Aug 30 (First 14 Rows)
+# Pre Promotion: Aug 31 - Jan 24 [15:35]
+# Promotion: Jan 25 - May 23 [36:52]
+# Post Promotion: May 24 - Aug 29 [53:]
+
+# The peak of visitors is noticeable in the promotion period 
+visitsFinancialsForVisits <- visitsFinancials[15:66,]
+
+visitsFinancialsForVisits %>% 
+  ggplot(aes(date, Visits)) + 
+  # geom_bar(stat = 'identity') +
+  geom_line() +
+  scale_x_date(date_labels="%d%b",date_breaks  ="2 week") + 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  geom_vline(xintercept = as.numeric(as.Date('2009-01-14')), 
+             colour = 'red') +
+  geom_vline(xintercept = as.numeric(as.Date('2009-05-21')),
+             colour = 'red') +
+  xlab('Weeks') +
+  ylab('Total Visits') +
+  ggtitle('Visits Variation Among Periods')
+  
+
+# b)  How incremental sales varied from pre promo to post promo?
+
+# Data Preparation
+  # First creat incremental sales 
+  # This will be done by calculating a 1 week moving avg (1 row rolling difference)
+  # New row - old row, i.e. x$Lbs._sold[i+1] - x$Lbs._sold[i]
+
+
+incrementalDate <- visitsFinancials[15:66, c('date',"Lbs._Sold","Revenue","campaign")]
+
+diffLagLbsRev <- function(lagDays){
+  
+  tempObjList <- list(
+    LbsSold = incrementalDate$Lbs._Sold %>%
+             diff(lag = lagDays) %>%
+             append(0),
+
+    Revenue = incrementalDate$Revenue %>%
+             diff(lag = lagDays) %>%
+             append(0))
+
+  return(tempObjList)
+  
+  }
+
+
+
+incrementalDate$incrementalSalesLbsSold<- diffLagLbsRev(1)[[1]]
+incrementalDate$incrementalRevenue <- diffLagLbsRev(1)[[2]]
+
+# Second Way, less elegant and doesn't yield the correct result
+    # 
+    # incrementalDate <- incrementalDate %>% 
+    #   mutate(incrementalRevenue = incrementalDate$Revenue %>% 
+    #            diff() %>%
+    #            lag(1)  %>% 
+    #            append(0)
+    #   )
+    # 
+    # incrementalDate <- incrementalDate %>% 
+    #   mutate(incrementalRevenue = incrementalDate$Revenue %>% 
+    #            diff() %>%
+    #            lag(1)  %>% 
+    #            append(0)
+    #   )
+
+  # plot: Line chart, y axis Incremental Sales in Lbs, x axis Weeks
+    # Incremental sales doesn't vary that much among periods
+incrementalDate %>% 
+  ggplot(aes(date, incrementalSalesLbsSold)) + 
+  geom_line() +
+  scale_x_date(date_labels="%d%b",date_breaks  ="2 week") + 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  geom_vline(xintercept = as.numeric(as.Date('2009-01-14')), 
+             colour = 'red') +
+  geom_vline(xintercept = as.numeric(as.Date('2009-05-21')),
+             colour = 'red') +
+  xlab('Weeks') +
+  ylab('Incremental Sales') +
+  ggtitle('Incremental Sales Variation Among Periods')
+
+# Boxplot among periods
+incrementalDate %>% 
+  ggplot(aes(factor(campaign), incrementalSalesLbsSold)) +
+  geom_boxplot() + 
+  xlab('Period') +
+  ylab('Incremental Sales') +
+  ggtitle('Incremental Sales Variation Among Periods') + 
+  scale_x_discrete(labels = c('Pre-promotion','Promotion', 'Post-promotion'))
+
+
+# Incremental Revenue
+incrementalDate %>% 
+  ggplot(aes(date, Revenue)) + 
+  geom_line() +
+  scale_x_date(date_labels="%d%b",date_breaks  ="2 week") + 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  geom_vline(xintercept = as.numeric(as.Date('2009-01-14')), 
+             colour = 'red') +
+  geom_vline(xintercept = as.numeric(as.Date('2009-05-21')),
+             colour = 'red') +
+  xlab('Weeks') +
+  ylab('Incremental Revenue') +
+  ggtitle('Incremental Sales Variation Among Periods')
+
+# Boxplot among periods
+incrementalDate %>% 
+  ggplot(aes(factor(campaign), incrementalRevenue)) +
+  geom_boxplot() + 
+  xlab('Period') +
+  ylab('Incremental Sales') +
+  ggtitle('Incremental Sales Variation Among Periods') + 
+  scale_x_discrete(labels = c('Pre-promotion','Promotion', 'Post-promotion'))
+
+# However, this analysis is just for the difference of one day!! 
+# How incremental sales vary when we extend the lag Day?
+# We can compute a moving average of the difference to know how much
+  # sales vary among periods
+
+# In the future the have less money than they had in the past!! 
+
+for( lagDay in 1:30){
+  # print(lagDay)
+  cat(
+    paste(lagDay, '\nAvg Difference of Sales', 
+          diffLagLbsRev(lagDay)[[1]] %>% 
+            mean(na.rm = TRUE) %>% round(3),
+          
+          '\nAvg Difference of Revenue', diffLagLbsRev(lagDay)[[2]] %>%
+            mean(na.rm = TRUE) %>% round(3),
+          '\n-----\n'
+          
+          )
+        )
+  
+}
+
+# There's no linear relationship with Lbs Sold 
+lm(Lbs._Sold ~ Visits + Unique_Visits + Pageviews + visitsFinancials$`Pages/Visit` + 
+     visitsFinancials$`Avg._Time_on_Site_(secs.)` + Bounce_Rate + visitsFinancials$`%_New_Visits`+ 
+     Inquiries,
+   data = visitsFinancials) %>% summary()
+
+lm(Revenue ~ Pageviews, visitsFinancials) %>% summary()
+
+
+
+
+
+
+
+
+
+
+
