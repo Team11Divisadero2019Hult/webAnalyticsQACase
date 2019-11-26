@@ -34,8 +34,11 @@ library(scales)
 library(lubridate)
 library(stringr)
 library(plotly)
+library(tidyr)
 
-setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
+
+# setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
+setwd("/home/diego/Dropbox/Postgrados/Hult/BusinessAnalyticsDD/ModA/R/cases/webAnalyticsQACase")
 
 visitsWeek <- read_excel("webAnalyticsCase.xls", 
                                sheet = "Weekly Visits")
@@ -127,7 +130,8 @@ colnames(visitsFinancials) <- str_replace_all(colnames(visitsFinancials),' ', '_
 colnames(visitsFinancials)
 
 # Creation of date column with proper format (useful for plots that have time in the X axis)
-      
+  # NOTE: The first day of the week is what's transformed to Date!!!
+
     # Example: paste(str_extract(visitsFinancials$`Week (2008-2009)`, pattern = '\\w{3} \\d{1,2} ') ,2008) %>% parse_date_time(orders = 'mdy')
 
 visitsFinancials$date <- paste(str_extract(visitsFinancials$`Week_(2008-2009)`, 
@@ -137,7 +141,8 @@ visitsFinancials$date <- paste(str_extract(visitsFinancials$`Week_(2008-2009)`,
 visitsFinancials$date[33:nrow(visitsFinancials)] <- paste(str_extract(visitsFinancials$`Week_(2008-2009)`[33:nrow(visitsFinancials)], 
                                                                       pattern = '\\w{3} \\d{1,2} ') ,2009) %>% 
   parse_date_time(orders = 'mdy')
-
+# It's important to transform the POSIXct as Date format
+visitsFinancials$date <- as.Date(visitsFinancials$date)
 
 # First Exploration Iteration ---------------------------------------------
 
@@ -189,7 +194,7 @@ ggplotly(ggplot(visitsFinancials, aes(x = factor(campaign), y = Revenue)) +
 
 ggplot(visitsFinancials) + 
   # geom_line(aes(x = date , y = Revenue)) +
-  geom_line(aes(x = date, y = visitsFinancials$`Avg. Time on Site (secs.)`)) +
+  geom_line(aes(x = date, y = visitsFinancials$`Avg._Time_on_Site_(secs.)`)) +
   geom_vline(xintercept = as.numeric(visitsFinancials$date[15]), 
              colour = 'red') +
   geom_vline(xintercept = as.numeric(visitsFinancials$date[36]), 
@@ -200,16 +205,16 @@ ggplot(visitsFinancials) +
 apply(visitsFinancials, MARGIN = 2, FUN = class)
 # colClasses <- str(visitsFinancials)
 
-lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg. Time on Site (secs.)` +
-     visitsFinancials$`Bounce Rate` + visitsFinancials$`% New Visits` + visitsFinancials$Inquiries, visitsFinancials) %>% summary()
+lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg._Time_on_Site_(secs.)` +
+     visitsFinancials$`Bounce_Rate` + visitsFinancials$`%_New_Visits` + visitsFinancials$Inquiries, visitsFinancials) %>% summary()
 
-lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg. Time on Site (secs.)` +
-     visitsFinancials$`Bounce Rate` + visitsFinancials$`% New Visits` + visitsFinancials$Inquiries +
-     visitsFinancials$`Lbs. Sold`, visitsFinancials) %>% summary()
+lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg._Time_on_Site_(secs.)` +
+     visitsFinancials$`Bounce_Rate` + visitsFinancials$`%_New_Visits` + visitsFinancials$Inquiries +
+     visitsFinancials$`Lbs._Sold`, visitsFinancials) %>% summary()
 
-as.numeric(visitsFinancials$date[])
+# as.numeric(visitsFinancials$date[])
 
-cor(visitsFinancials$Revenue, visitsFinancials$`Avg. Time on Site (secs.)`)
+cor(visitsFinancials$Revenue, visitsFinancials$`Avg._Time_on_Site_(secs.)`)
 
 
 
@@ -232,7 +237,7 @@ for(sheet in demographicSheetNames){
 
 # Total number of unique visitors to the website
     # 65,287
-  uniqueVisits<- visitsFinancials$`Unique Visits` %>% sum()
+  uniqueVisits<- visitsFinancials$`Unique_Visits` %>% sum()
 
 # Total number of visitors to the website 
   # 69k 
@@ -283,8 +288,8 @@ ggplot(visitsFinancials, aes(x = reorder(visitsFinancials$campaign,-Profit),
   ylab('Profits by Promotion Period') +
   ggtitle('Visits per Referring Site')
 
-ggplot(visitsFinancials, aes(x = reorder(visitsFinancials$campaign,- visitsFinancials$`Lbs. Sold`),
-                             y = visitsFinancials$`Lbs. Sold`)) + 
+ggplot(visitsFinancials, aes(x = reorder(visitsFinancials$campaign,- visitsFinancials$`Lbs._Sold`),
+                             y = visitsFinancials$`Lbs._Sold`)) + 
   geom_bar(stat = 'identity') +
   theme(axis.text.x=element_text(angle=45, hjust=1)) +
   xlab('Period') +
@@ -306,26 +311,26 @@ Question2 <- function(){}
 #   group_by(campaign) %>% 
 #   summarize(mean = mean(Revenue), 
 #             median = median(Revenue))
-customSummary <- function(variable){
-  visitsFinancials %>% 
-  group_by(campaign) %>% 
-  summarize(mean = mean(variable), 
-            median = median(variable), 
-            standardDev = sd(variable), 
-            Max = max(variable), 
-            Min = min(variable))
-}
-
-
-# def customSum(a):
-  # print(a)
-
-
-customSummary(Visits) 
-customSummary(Visits) 
-customSummary(visitsFinancials$Revenue) %>% View()
-customSummary(visitsFinancials$Profit) %>% View()
-customSummary(visitsFinancials$`Lbs. Sold`) %>% View()
+# customSummary <- function(variable){
+#   visitsFinancials %>% 
+#   group_by(campaign) %>% 
+#   summarize(mean = mean(variable), 
+#             median = median(variable), 
+#             standardDev = sd(variable), 
+#             Max = max(variable), 
+#             Min = min(variable))
+# }
+# 
+# 
+# # def customSum(a):
+#   # print(a)
+# 
+# 
+# customSummary(Visits) 
+# customSummary(Visits) 
+# customSummary(visitsFinancials$Revenue) %>% View()
+# customSummary(visitsFinancials$Profit) %>% View()
+# customSummary(visitsFinancials$`Lbs. Sold`) %>% View()
 
 Question3<-function(){}
 # 3) Create a column chart of the mean visits over the four periods—that is, your chart should
@@ -352,13 +357,13 @@ campUniqueVisits<- visitsFinancials %>% ggplot(aes(x = campaign,y = Unique_Visit
 campUniqueVisits<- visitsFinancials %>% ggplot(aes(x = campaign,y = Unique_Visits)) +
   geom_bar(stat = 'summary',fun.y = 'mean')
 
-campCost<- visitsFinancials %>% ggplot(aes(x = campaign,y = cost)) +
-  geom_bar(stat = 'summary',fun.y = 'mean')
+# campCost<- visitsFinancials %>% ggplot(aes(x = campaign,y = cost)) +
+#   geom_bar(stat = 'summary',fun.y = 'mean')
 
 
 
 library(ggpubr)
-ggarrange(campVisits,campUniqueVisits,campLbs,campProf,campRev, campCost)
+ggarrange(campVisits,campUniqueVisits,campLbs,campProf,campRev)
 
 
 Question4<- function(){}
@@ -390,7 +395,7 @@ visitsFinancials %>% ggplot(aes(y = price, x = date)) +
   geom_vline(xintercept = as.numeric(visitsFinancials$date[53]), 
              colour = 'red')
 # The price decreased from quarter 1 to quarter 2 (32 to 29) 
-# Cost are fluctuating at a similar level, they are not affecting the proffits (view corr with profit)
+# Cost are fluctuating at a similar level, they are not affecting the proffits as much as Revenue (view corr with profit)
 # Pounds sold they went up by 47% in the second quarter, might be due to the price drop -- Hypothesis
           # Revenues didn't increase by same amount!
           # Demand is elastic, affects a lot the price
@@ -444,3 +449,238 @@ visitsFinancials %>%
 
 hist(visitsFinancials$Lbs._Sold, breaks = 15
      )
+
+
+
+
+# Business Questions ------------------------------------------------------
+
+Question3 <- function(){}
+
+
+# Do the traditional promos drive web traffic, and in turn drive incremental sales?
+#   
+#   Define traditional promos (mail, magazines adds. New paid listings - December 2008)
+# Traditional promotion -> from (may 25-may31) to  (nov 23-nov 29) 
+# Web traffic: total visits (question 2)
+# Incremental sales: differences of sales (revenues and pounds sold) between weeks/periods 
+# Change in incremental sales vs total visits
+# a) How visits varied from pre promo to post promo?
+# b)  How incremental sales varied from pre promo to post promo?
+#   
+#   Assumptions: 
+# 1) during the 4 periods, QA has done all the traditional promotions
+# 2) The brochures is the only traditional promotion that affected the increase in web visits. 
+# 
+
+
+
+ 
+
+
+# a) How visits varied from pre promo to post promo?
+# I will do a line chart with X axis as Date, Y axis as Visits and the periods will be lines
+# from (may 25-may31) to  (nov 23-nov 29) 
+
+# Initial Period: May 25 - Aug 30 (First 14 Rows)
+# Pre Promotion: Aug 31 - Jan 24 [15:35]
+# Promotion: Jan 25 - May 23 [36:52]
+# Post Promotion: May 24 - Aug 29 [53:]
+
+# The peak of visitors is noticeable in the promotion period 
+visitsFinancialsForVisits <- visitsFinancials[15:66,]
+
+visitsFinancialsForVisits %>% 
+  ggplot(aes(date, Visits)) + 
+  # geom_bar(stat = 'identity') +
+  geom_line() +
+  scale_x_date(date_labels="%d%b",date_breaks  ="2 week") + 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  geom_vline(xintercept = as.numeric(as.Date('2009-01-14')), 
+             colour = 'red') +
+  geom_vline(xintercept = as.numeric(as.Date('2009-05-21')),
+             colour = 'red') +
+  xlab('Weeks') +
+  ylab('Total Visits') +
+  ggtitle('Visits Variation Among Periods')
+  
+
+# b)  How incremental sales varied from pre promo to post promo?
+
+# Data Preparation
+  # First creat incremental sales 
+  # This will be done by calculating a 1 week moving avg (1 row rolling difference)
+  # New row - old row, i.e. x$Lbs._sold[i+1] - x$Lbs._sold[i]
+
+
+incrementalDate <- visitsFinancials[15:66, c('date',"Lbs._Sold","Revenue","campaign")]
+
+diffLagLbsRev <- function(lagDays){
+  
+  tempObjList <- list(
+    LbsSold = incrementalDate$Lbs._Sold %>%
+             diff(lag = lagDays) %>%
+             append(0),
+
+    Revenue = incrementalDate$Revenue %>%
+             diff(lag = lagDays) %>%
+             append(0))
+
+  return(tempObjList)
+  
+  }
+
+
+
+incrementalDate$incrementalSalesLbsSold<- diffLagLbsRev(1)[[1]]
+incrementalDate$incrementalRevenue <- diffLagLbsRev(1)[[2]]
+
+# Second Way, less elegant and doesn't yield the correct result
+    # 
+    # incrementalDate <- incrementalDate %>% 
+    #   mutate(incrementalRevenue = incrementalDate$Revenue %>% 
+    #            diff() %>%
+    #            lag(1)  %>% 
+    #            append(0)
+    #   )
+    # 
+    # incrementalDate <- incrementalDate %>% 
+    #   mutate(incrementalRevenue = incrementalDate$Revenue %>% 
+    #            diff() %>%
+    #            lag(1)  %>% 
+    #            append(0)
+    #   )
+
+  # plot: Line chart, y axis Incremental Sales in Lbs, x axis Weeks
+    # Incremental sales doesn't vary that much among periods
+incrementalDate %>% 
+  ggplot(aes(date, incrementalSalesLbsSold)) + 
+  geom_line() +
+  scale_x_date(date_labels="%d%b",date_breaks  ="2 week") + 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  geom_vline(xintercept = as.numeric(as.Date('2009-01-14')), 
+             colour = 'red') +
+  geom_vline(xintercept = as.numeric(as.Date('2009-05-21')),
+             colour = 'red') +
+  xlab('Weeks') +
+  ylab('Incremental Sales') +
+  ggtitle('Incremental Sales Variation Among Periods')
+
+# Boxplot among periods
+incrementalDate %>% 
+  ggplot(aes(factor(campaign), incrementalSalesLbsSold)) +
+  geom_boxplot() + 
+  xlab('Period') +
+  ylab('Incremental Sales') +
+  ggtitle('Incremental Sales Variation Among Periods') + 
+  scale_x_discrete(labels = c('Pre-promotion','Promotion', 'Post-promotion'))
+
+
+# Incremental Revenue
+incrementalDate %>% 
+  ggplot(aes(date, Revenue)) + 
+  geom_line() +
+  scale_x_date(date_labels="%d%b",date_breaks  ="2 week") + 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  geom_vline(xintercept = as.numeric(as.Date('2009-01-14')), 
+             colour = 'red') +
+  geom_vline(xintercept = as.numeric(as.Date('2009-05-21')),
+             colour = 'red') +
+  xlab('Weeks') +
+  ylab('Incremental Revenue') +
+  ggtitle('Incremental Sales Variation Among Periods')
+
+# Boxplot among periods
+incrementalDate %>% 
+  ggplot(aes(factor(campaign), incrementalRevenue)) +
+  geom_boxplot() + 
+  xlab('Period') +
+  ylab('Incremental Sales') +
+  ggtitle('Incremental Sales Variation Among Periods') + 
+  scale_x_discrete(labels = c('Pre-promotion','Promotion', 'Post-promotion'))
+
+# However, this analysis is just for the difference of one day!! 
+# How incremental sales vary when we extend the lag Day?
+# We can compute a moving average of the difference to know how much
+  # sales vary among periods
+
+# In the future the have less money than they had in the past!! 
+
+for( lagDay in 1:30){
+  # print(lagDay)
+  cat(
+    paste(lagDay, '\nAvg Difference of Sales', 
+          diffLagLbsRev(lagDay)[[1]] %>% 
+            mean(na.rm = TRUE) %>% round(3),
+          
+          '\nAvg Difference of Revenue', diffLagLbsRev(lagDay)[[2]] %>%
+            mean(na.rm = TRUE) %>% round(3),
+          '\n-----\n'
+          
+          )
+        )
+  
+}
+
+diffLagLbsRev(1)
+
+# There's no linear relationship with Lbs Sold 
+lm(Lbs._Sold ~ Visits + Unique_Visits + Pageviews + visitsFinancials$`Pages/Visit` + 
+     visitsFinancials$`Avg._Time_on_Site_(secs.)` + Bounce_Rate + visitsFinancials$`%_New_Visits`+ 
+     Inquiries,
+   data = visitsFinancials) %>% summary()
+
+glm(Revenue ~ Visits + Unique_Visits + Pageviews + visitsFinancials$`Pages/Visit` + 
+     visitsFinancials$`Avg._Time_on_Site_(secs.)` + Bounce_Rate + visitsFinancials$`%_New_Visits`+ 
+     Inquiries,
+   data = visitsFinancials,family = 'gaussian') %>% summary()
+
+lm(Revenue ~ visitsFinancials$`Pages/Visit`, visitsFinancials) %>% summary()
+
+# Linear model with Elmir's Revenue/Unique_visit
+visitsFinancials <- visitsFinancials %>% 
+  mutate(Revenue_Unique = Revenue/Unique_Visits)
+
+
+
+
+# How much time spent per second: 
+  # They spent more time in the initial period than in the rest of the periods
+    # Despite the promotion, the amount of time didn't 
+
+
+
+# People are buying more in the initial period than in the next period
+# Pounds Sold states stagnant based on the amount of weeks
+
+
+Question2 <- function(){}
+
+WF <- visitsFinancials
+
+for (i in 1:nrow(WF)){WF$`Revenue/Unique`[i] <- WF$Revenue[i]/WF$`Unique Visits`[i]}
+
+WF <- WF %>% mutate(Revenue_Unique = Revenue/Unique_Visits)
+
+Rev_Unq <- ggplot(WF, aes(WF$campaign, WF$`Revenue_Unique`)) + geom_bar(stat = "summary")
+
+AVG_T <- ggplot(WF, aes(WF$campaign, WF$`Avg._Time_on_Site_(secs.)`)) + geom_bar(stat = "summary")
+
+Page_V<- ggplot(WF, aes(WF$campaign, WF$Pageviews)) + geom_bar(stat = "summary")
+
+Page_per_Vis<-ggplot(WF, aes(WF$campaign, WF$`Pages/Visit`)) + geom_bar(stat = "summary")
+
+Rev <- ggplot(WF, aes(WF$campaign, WF$Revenue)) + geom_bar(stat = "summary")
+
+UNQ <- ggplot(WF, aes(WF$campaign, WF$`Unique_Visits`)) + geom_bar(stat = "summary")
+
+
+ggarrange(Rev, AVG_T, Page_V, Page_per_Vis, UNQ, Rev_Unq)
+
+ggplot(WF, aes(WF$campaign, WF$`Avg. Time on Site (secs.)`)) + geom_boxplot(stat = "summary")
+
+
+
+
+
+
