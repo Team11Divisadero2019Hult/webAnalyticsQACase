@@ -37,7 +37,8 @@ library(plotly)
 library(tidyr)
 
 
-setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
+# setwd('/home/diego/bamodA/R/cases/webAnalyticsQACase/')
+setwd("/home/diego/Dropbox/Postgrados/Hult/BusinessAnalyticsDD/ModA/R/cases/webAnalyticsQACase")
 
 visitsWeek <- read_excel("webAnalyticsCase.xls", 
                                sheet = "Weekly Visits")
@@ -193,7 +194,7 @@ ggplotly(ggplot(visitsFinancials, aes(x = factor(campaign), y = Revenue)) +
 
 ggplot(visitsFinancials) + 
   # geom_line(aes(x = date , y = Revenue)) +
-  geom_line(aes(x = date, y = visitsFinancials$`Avg. Time on Site (secs.)`)) +
+  geom_line(aes(x = date, y = visitsFinancials$`Avg._Time_on_Site_(secs.)`)) +
   geom_vline(xintercept = as.numeric(visitsFinancials$date[15]), 
              colour = 'red') +
   geom_vline(xintercept = as.numeric(visitsFinancials$date[36]), 
@@ -207,13 +208,13 @@ apply(visitsFinancials, MARGIN = 2, FUN = class)
 lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg._Time_on_Site_(secs.)` +
      visitsFinancials$`Bounce_Rate` + visitsFinancials$`%_New_Visits` + visitsFinancials$Inquiries, visitsFinancials) %>% summary()
 
-lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg. Time on Site (secs.)` +
-     visitsFinancials$`Bounce Rate` + visitsFinancials$`% New Visits` + visitsFinancials$Inquiries +
-     visitsFinancials$`Lbs. Sold`, visitsFinancials) %>% summary()
+lm(Revenue ~ Visits + visitsFinancials$Pageviews + visitsFinancials$`Avg._Time_on_Site_(secs.)` +
+     visitsFinancials$`Bounce_Rate` + visitsFinancials$`%_New_Visits` + visitsFinancials$Inquiries +
+     visitsFinancials$`Lbs._Sold`, visitsFinancials) %>% summary()
 
-as.numeric(visitsFinancials$date[])
+# as.numeric(visitsFinancials$date[])
 
-cor(visitsFinancials$Revenue, visitsFinancials$`Avg. Time on Site (secs.)`)
+cor(visitsFinancials$Revenue, visitsFinancials$`Avg._Time_on_Site_(secs.)`)
 
 
 
@@ -236,7 +237,7 @@ for(sheet in demographicSheetNames){
 
 # Total number of unique visitors to the website
     # 65,287
-  uniqueVisits<- visitsFinancials$`Unique Visits` %>% sum()
+  uniqueVisits<- visitsFinancials$`Unique_Visits` %>% sum()
 
 # Total number of visitors to the website 
   # 69k 
@@ -287,8 +288,8 @@ ggplot(visitsFinancials, aes(x = reorder(visitsFinancials$campaign,-Profit),
   ylab('Profits by Promotion Period') +
   ggtitle('Visits per Referring Site')
 
-ggplot(visitsFinancials, aes(x = reorder(visitsFinancials$campaign,- visitsFinancials$`Lbs. Sold`),
-                             y = visitsFinancials$`Lbs. Sold`)) + 
+ggplot(visitsFinancials, aes(x = reorder(visitsFinancials$campaign,- visitsFinancials$`Lbs._Sold`),
+                             y = visitsFinancials$`Lbs._Sold`)) + 
   geom_bar(stat = 'identity') +
   theme(axis.text.x=element_text(angle=45, hjust=1)) +
   xlab('Period') +
@@ -310,26 +311,26 @@ Question2 <- function(){}
 #   group_by(campaign) %>% 
 #   summarize(mean = mean(Revenue), 
 #             median = median(Revenue))
-customSummary <- function(variable){
-  visitsFinancials %>% 
-  group_by(campaign) %>% 
-  summarize(mean = mean(variable), 
-            median = median(variable), 
-            standardDev = sd(variable), 
-            Max = max(variable), 
-            Min = min(variable))
-}
-
-
-# def customSum(a):
-  # print(a)
-
-
-customSummary(Visits) 
-customSummary(Visits) 
-customSummary(visitsFinancials$Revenue) %>% View()
-customSummary(visitsFinancials$Profit) %>% View()
-customSummary(visitsFinancials$`Lbs. Sold`) %>% View()
+# customSummary <- function(variable){
+#   visitsFinancials %>% 
+#   group_by(campaign) %>% 
+#   summarize(mean = mean(variable), 
+#             median = median(variable), 
+#             standardDev = sd(variable), 
+#             Max = max(variable), 
+#             Min = min(variable))
+# }
+# 
+# 
+# # def customSum(a):
+#   # print(a)
+# 
+# 
+# customSummary(Visits) 
+# customSummary(Visits) 
+# customSummary(visitsFinancials$Revenue) %>% View()
+# customSummary(visitsFinancials$Profit) %>% View()
+# customSummary(visitsFinancials$`Lbs. Sold`) %>% View()
 
 Question3<-function(){}
 # 3) Create a column chart of the mean visits over the four periods—that is, your chart should
@@ -356,13 +357,13 @@ campUniqueVisits<- visitsFinancials %>% ggplot(aes(x = campaign,y = Unique_Visit
 campUniqueVisits<- visitsFinancials %>% ggplot(aes(x = campaign,y = Unique_Visits)) +
   geom_bar(stat = 'summary',fun.y = 'mean')
 
-campCost<- visitsFinancials %>% ggplot(aes(x = campaign,y = cost)) +
-  geom_bar(stat = 'summary',fun.y = 'mean')
+# campCost<- visitsFinancials %>% ggplot(aes(x = campaign,y = cost)) +
+#   geom_bar(stat = 'summary',fun.y = 'mean')
 
 
 
 library(ggpubr)
-ggarrange(campVisits,campUniqueVisits,campLbs,campProf,campRev, campCost)
+ggarrange(campVisits,campUniqueVisits,campLbs,campProf,campRev)
 
 
 Question4<- function(){}
@@ -394,7 +395,7 @@ visitsFinancials %>% ggplot(aes(y = price, x = date)) +
   geom_vline(xintercept = as.numeric(visitsFinancials$date[53]), 
              colour = 'red')
 # The price decreased from quarter 1 to quarter 2 (32 to 29) 
-# Cost are fluctuating at a similar level, they are not affecting the proffits (view corr with profit)
+# Cost are fluctuating at a similar level, they are not affecting the proffits as much as Revenue (view corr with profit)
 # Pounds sold they went up by 47% in the second quarter, might be due to the price drop -- Hypothesis
           # Revenues didn't increase by same amount!
           # Demand is elastic, affects a lot the price
@@ -621,18 +622,62 @@ for( lagDay in 1:30){
   
 }
 
+diffLagLbsRev(1)
+
 # There's no linear relationship with Lbs Sold 
 lm(Lbs._Sold ~ Visits + Unique_Visits + Pageviews + visitsFinancials$`Pages/Visit` + 
      visitsFinancials$`Avg._Time_on_Site_(secs.)` + Bounce_Rate + visitsFinancials$`%_New_Visits`+ 
      Inquiries,
    data = visitsFinancials) %>% summary()
 
-lm(Revenue ~ Pageviews, visitsFinancials) %>% summary()
+glm(Revenue ~ Visits + Unique_Visits + Pageviews + visitsFinancials$`Pages/Visit` + 
+     visitsFinancials$`Avg._Time_on_Site_(secs.)` + Bounce_Rate + visitsFinancials$`%_New_Visits`+ 
+     Inquiries,
+   data = visitsFinancials,family = 'gaussian') %>% summary()
+
+lm(Revenue ~ visitsFinancials$`Pages/Visit`, visitsFinancials) %>% summary()
+
+# Linear model with Elmir's Revenue/Unique_visit
+visitsFinancials <- visitsFinancials %>% 
+  mutate(Revenue_Unique = Revenue/Unique_Visits)
 
 
 
 
+# How much time spent per second: 
+  # They spent more time in the initial period than in the rest of the periods
+    # Despite the promotion, the amount of time didn't 
 
+
+
+# People are buying more in the initial period than in the next period
+# Pounds Sold states stagnant based on the amount of weeks
+
+
+Question2 <- function(){}
+
+WF <- visitsFinancials
+
+for (i in 1:nrow(WF)){WF$`Revenue/Unique`[i] <- WF$Revenue[i]/WF$`Unique Visits`[i]}
+
+WF <- WF %>% mutate(Revenue_Unique = Revenue/Unique_Visits)
+
+Rev_Unq <- ggplot(WF, aes(WF$campaign, WF$`Revenue_Unique`)) + geom_bar(stat = "summary")
+
+AVG_T <- ggplot(WF, aes(WF$campaign, WF$`Avg._Time_on_Site_(secs.)`)) + geom_bar(stat = "summary")
+
+Page_V<- ggplot(WF, aes(WF$campaign, WF$Pageviews)) + geom_bar(stat = "summary")
+
+Page_per_Vis<-ggplot(WF, aes(WF$campaign, WF$`Pages/Visit`)) + geom_bar(stat = "summary")
+
+Rev <- ggplot(WF, aes(WF$campaign, WF$Revenue)) + geom_bar(stat = "summary")
+
+UNQ <- ggplot(WF, aes(WF$campaign, WF$`Unique_Visits`)) + geom_bar(stat = "summary")
+
+
+ggarrange(Rev, AVG_T, Page_V, Page_per_Vis, UNQ, Rev_Unq)
+
+ggplot(WF, aes(WF$campaign, WF$`Avg. Time on Site (secs.)`)) + geom_boxplot(stat = "summary")
 
 
 
