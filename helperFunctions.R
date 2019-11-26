@@ -114,3 +114,25 @@ convertQAWeeksToDate <- function(dataFrameVisits,
   }
 
 }
+
+
+
+
+
+# Initial Period: May 25 - Aug 30 (First 14 Rows)
+# Pre Promotion: Aug 31 - Jan 24 [15:35]
+# Promotion: Jan 25 - May 23 [36:52]
+# Post Promotion: May 24 - Aug 29 [53:]
+
+# THIS FUNCTION REQUIRES THE DATASET TO HAVE THE ORIGINAL ROWS AS 
+  # IN THE CASE: 66 rows.
+
+convertQAWeeksToPeriod <- function(dataFrame){
+
+  dataFrame$period <- 1
+  dataFrame$period[15:35] <- 2
+  dataFrame$period[36:52] <- 3
+  dataFrame$period[53:nrow(dataFrame)] <- 4
+  return(dataFrame)
+
+}
