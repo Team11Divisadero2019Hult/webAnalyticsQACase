@@ -83,7 +83,7 @@ qaDf <- read_csv('mergedVisitsFinancialsWithDateCol.csv')
 
 # Diego Q3 ----------------------------------------------------------------
 
-
+print('I MADE A CHANGE')
 
 # Possible Modelling  -----------------------------------------------------
 
