@@ -105,7 +105,7 @@ str(visitsWeek)
   # Rest of columns need to be numeric
 
   # Initial period Creation
-# Initial Period: May 25 - Aug 30 (First 14 Rows)
+Initial Period: May 25 - Aug 30 (First 14 Rows)
 # Pre Promotion: Aug 31 - Jan 24 [15:35]
 # Promotion: Jan 25 - May 23 [36:52]
 # Post Promotion: May 24 - Aug 29 [53:]
@@ -126,7 +126,7 @@ str(financials)
 visitsFinancials <- left_join(visitsWeek, financials, by = "Week (2008-2009)")
 
 str(visitsFinancials)
-colnames(visitsFinancials) <- str_replace_all(colnames(visitsFinancials),' ', '_')
+# colnames(visitsFinancials) <- str_replace_all(colnames(visitsFinancials),' ', '_')
 colnames(visitsFinancials)
 
 # Creation of date column with proper format (useful for plots that have time in the X axis)
