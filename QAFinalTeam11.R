@@ -161,7 +161,7 @@ visitsFinancialsForVisits %>%
   ggtitle('Visits Variation Among Periods')
 
 
-# Part B ------------------------------------------------------------------
+# Part B Pre Processing ------------------------------------------------------------------
 
 
 # b)  How incremental sales varied from pre promo to post promo?
@@ -169,6 +169,9 @@ visitsFinancialsForVisits %>%
 
 incrementalDate <- visitsFinancials[15:66,]
 
+# This function creates the lagged Differene of a given Dataframe
+  # It outputs a List, this is done in order to be able to store
+  # different variable lengths.
 
 diffLag <- function(lagWeeks,nameOfCol, nameOfDF){
   
@@ -189,9 +192,12 @@ diffLag <- function(lagWeeks,nameOfCol, nameOfDF){
   
 }
 
-# TO DO: Make correlation between variables and different lags of 
-# Revenue
 
+# Incremental Revenue Modelling 
+# First, a dataframe all the 1-week lagged variables is created
+# This is done in order to reuse any lagged difference variable in the future
+
+# DiffLag lags this variables and returns a list
 laggedList <- diffLag(2,c("Visits",
             "Unique_Visits",
             "Pageviews",
@@ -203,11 +209,15 @@ laggedList <- diffLag(2,c("Visits",
             "Lbs._Sold",
             "Inquiries"),incrementalDate) 
 
+# Convert the list to a dataframe, 
+ # if the elements have different lengths this will throw an error
 
 laggedDf <- data.frame(matrix(unlist(laggedList), 
                   nrow=length(laggedList[[1]]), 
                   byrow=FALSE)) 
 
+# Create appropriate names of the columns in order to distinguish them 
+  # if merged with original dataset 
 
 laggedNames <- c("lagged_Visits", 
                  "lagged_Unique_Visits", 
@@ -221,20 +231,22 @@ laggedNames <- c("lagged_Visits",
                  "lagged_Lbs._Sold", 
                  "lagged_Inquiries")
 
-
-
 colnames(laggedDf) <- laggedNames
 
 
 
-# Rename Variables for ggplot
+# Rename Variables for ggplot to have a more descriptive name
+  # New columns in incrementalDate are created
+  # NOTE: Incremental date contains the observations from prepromotion to 
+    # Postpromotion. We are considireing the brochure as the main traditional promotion
+      #thus,  the initial period is not included in the following graphs
 
 incrementalDate$incrementalSalesLbsSold <- laggedDf$lagged_Lbs._Sold
 incrementalDate$incrementalRevenue <- laggedDf$lagged_Revenue
 
 
 
-# Part B.1 ----------------------------------------------------------------
+# Part B.1 Incremental Sales ----------------------------------------------------------------
 
 
 # plot: Line chart, y axis Incremental Sales in Lbs, x axis Weeks
@@ -270,6 +282,7 @@ incrementalDate %>%
 
 # Yield Same results as before, more variation in the promotion period, 
 # The prepromotion had higher revenue
+# Not sure if to include this, no actionable insight here
 
 # Incremental Revenue
 incrementalDate %>% 
@@ -304,7 +317,7 @@ incrementalDate %>%
 # We can compute a moving average of the difference to know how much
 # sales vary among periods
 
-# Find best way to model incremental sales
+# Goal: Find best way to model incremental sales and future sales
 
 
 # Incremental Revenue Modelling -------------------------------------------
@@ -317,23 +330,36 @@ columnNames <-c("Visits",
                 "Avg._Time_on_Site_(secs.)",
                 "Bounce_Rate","%_New_Visits",
                 "Inquiries") 
-# This function crates a dataframe with the lagged weeks
+
+# This function crates a dataframe with 
+  # n lagged weeks Revenue.
+   #  I.e. Revenue shifts m rows. 
+  # Then n is indexed from m+1 to nrow(df)
+# The output of this function is the DF that 
+ # is going to be used in the modelling
 
 laggedModelRevPrep <- function(lagWeeks) {
   
+  # The lagged dataframe is created
   tempDiffLagDf <- diffLag(lagWeeks,'Revenue',
                            qaDf) %>% 
     unlist() %>% 
     matrix( nrow=nrow(qaDf), 
             byrow=FALSE)
   
+  # Name of lagged revenue is creted
   colnames(tempDiffLagDf) <- 'Lagged_Revenue'
+ 
+  # Following columns Dropped: 
+  # Week (2008-2009), Revenue, date, period, % New Visits, Profit, Lbs. Sold
+  # This is done to not include any of this columns in the model
+  qaDf[,c(-1,-9,-13,-14,-8,-10,-11)]
   
   tempDiffLagDf <- tempDiffLagDf %>% 
     cbind(qaDf[,c(-1,-9,-13,-14,-8,-10,-11)])
   
   startIndex <- lagWeeks + 1
-  # 
+  
   tempDiffLagDf <-tempDiffLagDf[startIndex:nrow(tempDiffLagDf), ]
   
   return(tempDiffLagDf)
@@ -367,17 +393,15 @@ laggedModel %>% summary()
 
 
 
-# ggpredict()
-# https://cran.r-project.org/web/packages/ggiraphExtra/vignettes/ggPredict.html
-######
-
-
 # Variable selection through stepwise regression
 library(MASS)
 stepAIC(laggedModel, direction = 'backward')
 
 # The linear combination of visits and pageviews yields the best model
 # The model has a p-value of 0.002 and an R square of 0.15
+# Beta Coefficients: 
+  # Visits         -638
+  # Pageviews       491
 
 laggedIncRevFinal <-lm(Lagged_Revenue ~ Visits + 
      Pageviews, data = laggedIncRevDf)
@@ -385,7 +409,9 @@ laggedIncRevFinal <-lm(Lagged_Revenue ~ Visits +
 laggedIncRevFinal  %>% summary()
 
 
-# Visualizing Multiple Regression!
+
+# Visualizing Multiple Regression
+# Probably including this inthe appendix
 library(ggiraphExtra)
 ggPredict(laggedIncRevFinal, interactive = TRUE)
 
@@ -397,9 +423,9 @@ ggPredict(laggedIncRevFinal, interactive = TRUE)
 # Lagged Revenue Model ----------------------------------------------------
 
 
-# Now let's see how we can improve the magnitude of our future revenue
-# 
+# Now let's see how we can improve the future revenue magnitude # 
 
+# We print the output up to a 10-week lag
 
 for(lag in 1:10){
   
@@ -419,8 +445,7 @@ for(lag in 1:10){
 }
 
 # More in detail, best model .16 R squared 3 week lag
-# The unique visitors is what drives the revenue
-# Might be the awarenes? 
+
 lagNumber <- 3
 qaModel <- visitsFinancials[,c(-1,-9,-13,-14,-10,-11)]
 laggedRev <- lag(qaDf$Revenue,n = lagNumber)
@@ -449,6 +474,9 @@ stepAIC(qaLagRev, direction = 'backward')
 # `Avg. Time on Site (secs.)`  6.498485e-01
 # `Bounce Rate`                1.615064e+00
 # Inquiries                    2.901167e-01
+
+lm(formula = qaModel$laggedRev ~ Visits + Unique_Visits + `Pages/Visit`, 
+   data = qaModel) %>% summary()
 
 colnames(qaModel)[c(4,5,7)] <- c('pagesPerVisit', 'avgTimeOnSite','percentNewVisits' ) 
 
