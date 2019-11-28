@@ -199,7 +199,10 @@ visitsFinancialsForVisits %>%
              colour = 'red') +
   xlab('Weeks') +
   ylab('Total Visits') +
-  ggtitle('Visits Variation Among Periods')
+  ggtitle('Visits Variation Among Periods') + 
+  theme(axis.text=element_text(size=12),
+         axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"))
 
 
 # Part B Pre Processing ------------------------------------------------------------------
@@ -306,7 +309,11 @@ incrementalDate %>%
              colour = 'red') +
   xlab('Weeks') +
   ylab('Incremental Sales') +
-  ggtitle('Incremental Sales Variation Among Periods')
+  ggtitle('Incremental Sales Variation Among Periods') + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'))
 
 # Boxplot among periods
 # Same result as before, more variation during the promotion
@@ -314,9 +321,15 @@ incrementalDate %>%
   ggplot(aes(factor(period), incrementalSalesLbsSold)) +
   geom_boxplot() + 
   xlab('Period') +
-  ylab('Incremental Sales') +
-  ggtitle('Incremental Sales Variation Among Periods') + 
-  scale_x_discrete(labels = c('Pre-promotion','Promotion', 'Post-promotion'))
+  ylab('Incremental Sales (Lbs. Sold)') +
+  ggtitle('Incremental Sales Variation Among Periods',
+          subtitle = 'Incremental Sales: Future Lbs. Sold - Past Lbs. Sold') + 
+  scale_x_discrete(labels = c('Pre-promotion','Promotion', 'Post-promotion')) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'))
+
 
 
 # Part B.2 Inc Revenue ----------------------------------------------------------------
@@ -337,16 +350,26 @@ incrementalDate %>%
              colour = 'red') +
   xlab('Weeks') +
   ylab('Incremental Revenue') +
-  ggtitle('Incremental Sales Variation Among Periods')
+  ggtitle('Incremental Sales Variation Among Periods') + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'))
 
 # Boxplot among periods
 incrementalDate %>% 
   ggplot(aes(factor(period), incrementalRevenue)) +
   geom_boxplot() + 
   xlab('Period') +
-  ylab('Incremental Sales') +
-  ggtitle('Incremental Sales Variation Among Periods') + 
-  scale_x_discrete(labels = c('Pre-promotion','Promotion', 'Post-promotion'))
+  ylab('Incremental Revenue') +
+  ggtitle('Incremental Revenue Variation Among Periods',
+          subtitle = 'Incremental Revenue: Future Revenue - Past Revenue') + 
+  scale_x_discrete(labels = c('Pre-promotion','Promotion', 'Post-promotion')) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'))
+
 
 
 # Modelling  --------------------------------------------------------------
@@ -379,17 +402,17 @@ columnNames <-c("Visits",
 # The output of this function is the DF that 
  # is going to be used in the modelling
 
-laggedModelRevPrep <- function(lagWeeks) {
+laggedModelRevPrep <- function(lagWeeks,columnName) {
   
   # The lagged dataframe is created
-  tempDiffLagDf <- diffLag(lagWeeks,'Revenue',
+  tempDiffLagDf <- diffLag(lagWeeks,columnName,
                            qaDf) %>% 
     unlist() %>% 
     matrix( nrow=nrow(qaDf), 
             byrow=FALSE)
   
   # Name of lagged revenue is creted
-  colnames(tempDiffLagDf) <- 'Lagged_Revenue'
+  colnames(tempDiffLagDf) <- paste('Lagged_',columnName,sep = '')
  
   # Following columns Dropped: 
   # Week (2008-2009), Revenue, date, period, % New Visits, Profit, Lbs. Sold
@@ -406,13 +429,15 @@ laggedModelRevPrep <- function(lagWeeks) {
   return(tempDiffLagDf)
 }
 
+
+
 # Incremental Sales have the best fit on the 2nd week lag R2 = 0.20
 # Data better to predict values in 2 weeks. This is the prediction to of 
 # incremental revenue
 
 for (i in 1:10){
   
-  laggedLmDf <- laggedModelRevPrep(i)
+  laggedLmDf <- laggedModelRevPrep(i,"Revenue")
   
   laggedModelTemp <- lm(laggedLmDf$Lagged_Revenue ~ . ,data = laggedLmDf) %>% summary()
   
@@ -421,17 +446,36 @@ for (i in 1:10){
   
 }
 
+# THIS IS CREATING A MODEL FOR INCREMENTAL SALES
+# 4 WEEKS IS THE OPTIMAL POINT IN TIME
+# VISITS AND UNIQUE VISITS ARE THE ONLY SIGNIFICANT VARIABLES < 0.05 
+# THE INTERPRETATION HAS NO LOGIC BUSINESS IMPLICATION, 
+  # E.G. THE HIGHER THE BOUNCE RATE, THE HIGHER THE SALES 
+# ADJ R SQUARED IS 0.122 AND MULTIPLE R SQUARED IS 0.194, MODEL P VALUE: 0.02981
+
+# laggedIncLbsSold <- laggedModelRevPrep(4,"Lbs. Sold")
+# 
+# laggedModel <- lm(`Lagged_Lbs. Sold` ~ . , data = laggedIncLbsSold)
+# lm(formula = `Lagged_Lbs. Sold` ~ Visits + `Unique Visits` + 
+#      `Pages/Visit` + `Bounce Rate` + Inquiries, data = laggedIncLbsSold) %>% summary()
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)   
+# (Intercept)     -103565.93   57951.88  -1.787  0.07933 . 
+# Visits              254.68      79.88   3.188  0.00234 **
+# `Unique Visits`    -264.50      82.26  -3.216  0.00216 **
+# `Pages/Visit`     15866.72    9465.35   1.676  0.09926 . 
+# `Bounce Rate`     99188.50   58121.13   1.707  0.09344 . 
+# Inquiries          -663.82     414.67  -1.601  0.11504
 
 # Now we take a closer look to the model
 # Page views is the only significant variable of the model
 # Beta Estimate is positive
 
-laggedIncRevDf <- laggedModelRevPrep(2)
+laggedIncRevDf <- laggedModelRevPrep(2, "Revenue")
 
 
 laggedModel <- lm(laggedIncRevDf$Lagged_Revenue ~ . ,data = laggedIncRevDf) 
 laggedModel %>% summary()
-
 
 
 # Variable selection through stepwise regression
@@ -440,6 +484,7 @@ stepAIC(laggedModel, direction = 'backward')
 
 # The linear combination of visits and pageviews yields the best model
 # The model has a p-value of 0.002 and an R square of 0.15
+# Multiple R-squared:  0.2097,	Adjusted R-squared:  0.1109 
 # Beta Coefficients: 
   # Visits         -638
   # Pageviews       491
@@ -449,7 +494,7 @@ laggedIncRevFinal <-lm(Lagged_Revenue ~ Visits +
 
 laggedIncRevFinal  %>% summary()
 
-
+require(Mcomp)
 
 # Visualizing Multiple Regression
 # Probably including this inthe appendix
@@ -509,6 +554,8 @@ stepAIC(qaLagRev, direction = 'backward')
 # The more Visits, Pages/Visit, AvgTime, BounceRate, and inquiries, 
 # The higher the revenue in 3 weeks
 # The less amount of pageViews, the higher revenue in 3 weeks. 
+# THis model doesn't make much sense, the interecept is positive despite they are 
+# losing money in the future!  
 # Visits                       1.082930e+00 # NOT SIGNIFICANT!
 # Pageviews                   -1.152345e+00
 # `Pages/Visit`                1.116428e+00
