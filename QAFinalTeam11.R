@@ -374,7 +374,7 @@ incrementalDate %>%
 
 # Modelling  --------------------------------------------------------------
 
-
+#### THE ROLLING DIFFERENCE AND THE LAGGED REVENUE NEEDS TO BE SHIFTER UPWARDS!!!!!
 
 # However, this analysis is just for the difference of one week!! 
 # Question: How incremental sales vary when we extend the lag week?
@@ -506,17 +506,17 @@ ggPredict(laggedIncRevFinal, interactive = TRUE)
 # will yield
 # a better revenue in approximately 2 weeks
 
-# Lagged Revenue Model ----------------------------------------------------
+# Lead Revenue Model ----------------------------------------------------
 
 
 # Now let's see how we can improve the future revenue magnitude # 
 
 # We print the output up to a 10-week lag
 
-for(lag in 1:10){
+for(lag in 1:30){
   
-  
-  laggedRev <- lag(qaDf$Revenue,n = lag)
+  # CHANGED LAGGED TO LEAD
+  laggedRev <- lead(qaDf$Revenue,n = lag)
   laggedRev[is.na(laggedRev)] <- 0
   laggedQa <- qaDf[,c(-1,-9,-13,-14,-8,-10,-11)]
   laggedQa$laggedRev <- laggedRev
@@ -530,24 +530,99 @@ for(lag in 1:10){
   
 }
 
-# More in detail, best model .16 R squared 3 week lag
+# MODEL BEFORE: More in detail, best model .16 R squared 3 week lag
+# MODEL AFTER: Best model 0.46 R and 0.4 adj. R Squared
 
-lagNumber <- 3
+# THE MODEL IMPROVES A LOT WHEN USING THE LEAD INSTEAD OF THE LAG, 
+# THE LAG SHOULDNT HAVE BEEN USED BECAUSE WE WERE TRYING TO PREDICT 
+# PASTA DATA WITH FUTURE DATA (LAG ROLLS ROWS UP, NOT DOWN)
+# http://b2b-marketingblog.activeconversion.com/industrial/high-bounce-rate/
+# Call:
+#   lm(formula = qaModel$laggedRev ~ `Pages/Visit` + `Avg._Time_on_Site_(secs.)` + 
+#        Bounce_Rate + `%_New_Visits` + Inquiries, data = qaModel)
+# 
+# Residuals:
+#   Min      1Q  Median      3Q     Max 
+# -296115 -124070   -3810  119567  314462 
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)                 -5624645    1325904  -4.242 8.74e-05 ***
+#   `Pages/Visit`                 464518     238628   1.947  0.05679 .  
+# `Avg._Time_on_Site_(secs.)`     8983       3221   2.789  0.00729 ** 
+#   Bounce_Rate                  2972582    1118517   2.658  0.01033 *  
+#   `%_New_Visits`               2511603    1145660   2.192  0.03269 *  
+#   Inquiries                      24008       8290   2.896  0.00544 ** 
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 163900 on 54 degrees of freedom
+# Multiple R-squared:  0.4565,	Adjusted R-squared:  0.4062 
+# F-statistic: 9.073 on 5 and 54 DF,  p-value: 2.624e-06
+
+
+leadNumber <- 6
 qaModel <- visitsFinancials[,c(-1,-9,-13,-14,-10,-11)]
-laggedRev <- lag(qaDf$Revenue,n = lagNumber)
-laggedRev[is.na(laggedRev)] <- 0
-qaModel$laggedRev <- laggedRev
-startIndex <- lagNumber +1
+leadRev <- lead(qaDf$Revenue,n = leadNumber) # CHANGED LAG TO LEAD
+leadRev[is.na(leadRev)] <- 0
+qaModel$leadRev <- leadRev
+startIndex <- leadNumber +1
 qaModel <-qaModel[startIndex:nrow(qaModel), ]
-qaModel<- scale(qaModel) %>% as.data.frame()
+# qaModel<- scale(qaModel) %>% as.data.frame()
 
 # Check Bounce Rate and Inquiries
-qaLagRev <- lm(qaModel$laggedRev ~ . , data = qaModel)
+qaLagRev <- lm(qaModel$leadRev ~ . , data = qaModel)
 qaLagRev  %>% summary()
+
 
 # Variable Selection
 library(MASS)
 stepAIC(qaLagRev, direction = 'backward')
+
+leadModel <- lm(formula = qaModel$leadRev ~ `Pages/Visit` + `Avg._Time_on_Site_(secs.)` + 
+     Bounce_Rate + `%_New_Visits` + Inquiries, data = qaModel) 
+
+leadModel %>% summary()
+
+# Checking nonlinear model 
+# library(randomForest)
+# colnames(qaModel)[4] <- 'pages_visit'
+# colnames(qaModel)[5] <- 'avgTime'
+# colnames(qaModel)[7] <- 'percNewVisits'
+# rf<-randomForest(qaModel$leadRev ~ .,data = qaModel)
+# rf$importance
+
+
+qaModel$date <- visitsFinancials$date[7:nrow(visitsFinancials)]
+
+library(ggpubr)
+
+p1 <-  ggplot(data = qaModel, mapping = aes(x = date, y = laggedRev)) + 
+  geom_line(stat = "identity") 
+p1
+
+p2 <-  ggplot(data = qaModel, mapping = aes(x = date, y = Inquiries)) + 
+  geom_line(stat = "identity")
+p2
+
+ggarrange(p1,p2)
+
+library(plotly)
+ggplotly(qaModel %>%
+  ggplot() +
+    geom_point(aes(x = Bounce_Rate, y =  laggedRev)))
+
+# p <- ggplot(data = d, mapping = aes(x = date, y = y)) +
+#   facet_grid(panel~., scale="free") +
+#   geom_line(data = d1, stat = "identity") +
+#   geom_tile(data=d2, mapping=aes(colour=z, fill=z), stat = "identity")
+# p
+
+ggplot(qaModel, aes(x = date)) + 
+  geom_line(aes(y = laggedRev, colour = "Revenue")) + 
+  geom_line(aes(y = Inquiries*100000, colour = "Inquiries")) +
+  scale_y_continuous(sec.axis = sec_axis( ~ . /100000, name = "Inquiries"))
+
 
 
 # Best Linear Model for lagged Revenue of 3 weeks
