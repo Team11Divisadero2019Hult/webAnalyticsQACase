@@ -92,11 +92,23 @@ tm3 <- mean(T3) # 48.7647
 tm4 <- mean(T4) # 70.00000
 
 #BAR CHART for AVg Time per period
-timebar <- ggplot(qaDf, aes(qaDf$period, qaDf$`Avg. Time on Site (secs.)`))
+# Did conversion manually just to confirm that scale_y_time was converting appropriately
+#qaDf$AvgTimeOnSite_Minutes <- qaDf$`Avg. Time on Site (secs.)` / 60
+
+timebar <- ggplot(qaDf, aes(as.factor(qaDf$period), as_datetime(qaDf$`Avg. Time on Site (secs.)`)))
 timebar + geom_col() +
   xlab("Periods") +
-  ylab("Avg Time (secs)") +
-  ggtitle("Avg Time on Website per Period")
+  ylab("Avg Time (Mins)") +
+  ggtitle("Avg Time on Website per Period") +
+  scale_x_discrete(labels = c('Initial Period',
+                              'Pre-promotion',
+                              'Promotion',
+                              'Post-promotion')) +
+  scale_y_time(labels = function(l) strftime(l, '%M')) +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'))
 
 
 #B How many pageviews per visits per period?
@@ -112,11 +124,19 @@ PM3 <- mean(PVP3) #1.794706
 PM4 <- mean(PVP4) #2.181429
 
 #BAR CHART: Pg views per visit per period
-pageviewsbar <- ggplot(qaDf, aes(qaDf$period, qaDf$`Pages/Visit`))
+pageviewsbar <- ggplot(qaDf, aes(as.factor(qaDf$period), qaDf$`Pages/Visit`))
 pageviewsbar + geom_col() +
   xlab("Periods") +
-  ylab("Pageviews per Visit") +
-  ggtitle("Avg PageViews per Visit")
+  ylab("Number of Pageviews per Visit") +
+  ggtitle("Average PageViews per Visit") + 
+  scale_x_discrete(labels = c('Initial Period',
+                              'Pre-promotion',
+                              'Promotion',
+                              'Post-promotion')) +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'))
 
 
 # Elmir Q2 c, d -----------------------------------------------------------
@@ -410,7 +430,7 @@ for (i in 1:10){
   
 }
 
-# THIS IS CREATING A MODEL FOR INCREMENTAL SALES
+# THIS IS CREATING A MODEL FOR INCREMENTAL REVENUE
 # 2 WEEKS IS THE OPTIMAL POINT IN TIME
 
 
@@ -427,6 +447,7 @@ for (i in 1:10){
 # `Avg. Time on Site (secs.)` -3.021e+03  1.581e+03  -1.910  0.06102 .  
 # `Lbs. Sold`                  2.426e+01  3.445e+00   7.044 2.48e-09 ***
 # Multiple R-squared:  0.5715,	Adjusted R-squared:  0.5345 
+# p-value: 1.192e-09
 
 laggedIncRevDf <- laggedModelRevPrep(lagWeeks = 2, 
                                      columnName = "Revenue",
@@ -451,6 +472,20 @@ laggedIncRevFinal <-lm(formula = laggedIncRevDf$Lagged_Revenue ~ Visits +
 laggedIncRevFinal  %>% 
   summary()
 
+# NOTE TO FUTURE SELF: COMPARE THIS MODEL with the one on line 464 ---> 
+  # lm(formula = laggedIncRevDf$Lagged_Revenue ~ Visits + Pageviews + 
+    # Lbs._Sold, data = laggedIncRevDf) # F p-value: 6.366e-10
+# The adj.R is 0.51, slightly worse than the previous model. 
+# The focus is not having the highest R squared, 
+  # The focus is to find the most parsimonious model in order to extract
+  # actionable insights!! This second model has less variables and a 
+  # lower overall p value (F test), it's more generalizable
+# Key insights: Our revenue is mostly affected after 2 weeks of users navigating the 
+# webpage. 
+# Moreover, with the average of number of visitors, pageviews and Lbs.Sold, 
+# we can explain 50 % of the future revenue (2 weeks). We can recommend which elements 
+# of the new webpage are needed to be optimized in order to have the desired output! 
+# TO DO: Think about which other variables might be useful in modelling the future revenue
 
 
 
