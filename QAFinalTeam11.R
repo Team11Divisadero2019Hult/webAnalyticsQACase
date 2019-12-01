@@ -10,7 +10,7 @@ proper format.
 The qaDf is saved in the github repository.
 The pre-processing section is for the professor to check how we massaged the data.
 
-NOTE: CAMPAIGN IS TRANSFORMED AS A FACTOR IN THE PREPROCESSING STEP
+NOTE: period IS TRANSFORMED AS A FACTOR IN THE PREPROCESSING STEP
 
 "
 
@@ -72,10 +72,243 @@ qaDf <- convertQAWeeksToPeriod(qaDf)
 
 qaDf <- read_csv('mergedVisitsFinancialsWithDateCol.csv')
 
+# Q1
+dfregion <- read_excel("webAnalyticsCase.xls",sheet ='TopTenGeographicSources' )
+trafficSourcesDf <- read_excel("webAnalyticsCase.xls", sheet = 'allTrafficSources') 
+topTenRefSitesDf <- read_excel('webAnalyticsCase.xls', sheet = 'TopTenReferringSites')
+dfsearcheng <- read_excel('webAnalyticsCase.xls', sheet = 'TopTenSearchEngineSourcesofVisits')
+
 #DF only used in Q2 for additional column "Rev/UV"
 FV_P <- read_excel("Web_FinVists_Periods.xlsx")
 
 # Carolina Q1 -------------------------------------------------------------
+
+# Unique visits by date ---------------------------------------------------
+
+
+#Unique Visits by Period
+
+# In case we want to do compare by percentage
+# qaDf <- qaDf %>% mutate(percentVisits = Visits/sum(Visits) )
+
+
+# By period 
+uvisitsbar<-ggplot(qaDf, aes(as.factor(period),
+                             `Unique Visits`,
+                             fill = as.factor(period)))
+uvisitsbar +
+  geom_bar(stat = 'identity') +
+  xlab("Period") +
+  ylab("Unique Visitors") +
+  ggtitle("Number of Unique visitors per Period")+ 
+  scale_x_discrete(labels = c('Initial Period',
+                              'Pre-promotion',
+                              'Promotion',
+                              'Post-promotion'))+
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'),
+        legend.position = 'none')
+
+
+
+# By week, important to see the trend line 
+
+uvisitsline<-ggplot(qaDf)
+uvisitsline + geom_line(aes(qaDf$date,qaDf$`Unique Visits`)) + 
+  scale_x_date(date_labels="%d%b",date_breaks  ="3 week") +  
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  xlab("Date") +
+  ylab("Unique Visitors") +
+  ggtitle("Number of Unique visitors per week") + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'),
+        legend.position = 'none')
+
+# Plotly Version
+p <- plot_ly(qaDf, x = ~qaDf$date, y = qaDf$`Unique Visits`,type = 'scatter', mode='lines')
+p
+
+
+#From where they visit
+
+# Data prep to create percentages and aggregate the groups 
+
+# The dataframe is ordered in descending 
+dfregion <- dfregion[order(-dfregion$Visits), ]
+
+# Sum of the visits is created to find the percentage 
+totalRegionVisits <- sum(dfregion$Visits)
+
+# Percentage of visits created
+dfregion <- dfregion %>% mutate(percentVisits = Visits/sum(Visits) )
+ 
+# All Asian countries grouped
+asiaIndex <- grep('Asia',x = dfregion$`Top Ten Geographic Sources by Sub Continent Region` )
+asiaSum <- dfregion[asiaIndex,'Visits'] %>% sum() 
+
+# All European countries grouped
+europIndex <- grep('Europe',x = dfregion$`Top Ten Geographic Sources by Sub Continent Region` )
+europSum <- dfregion[europIndex,'Visits'] %>% sum() 
+
+# A row is added in order to plot the final df
+dfregion <- add_row(dfregion, 
+                    `Top Ten Geographic Sources by Sub Continent Region` = c("Europe",'Asia'), 
+                    Visits = c(europSum,asiaSum),percentVisits = c(europSum/totalRegionVisits ,
+                                                                   asiaSum/totalRegionVisits ))
+
+# The dataframe is orderd again by descending (Visits Column)
+dfregion <- dfregion[order(-dfregion$Visits), ]
+
+
+# Creating the plot with the relevant labels
+ggplot(dfregion[1:5,], aes(x = reorder(`Top Ten Geographic Sources by Sub Continent Region`,
+                                       -percentVisits),
+                                    y = percentVisits,
+                           fill = `Top Ten Geographic Sources by Sub Continent Region`,
+                           label = paste0(round(percentVisits*100,1),'%'))) + 
+  geom_bar(stat = 'identity') +
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  xlab('Regions') +
+  ylab('Percentage of Visits') +
+  ggtitle('Percentage of Visits per Region') + 
+  scale_y_continuous(labels = scales::percent) +
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'),
+        legend.position = 'none') +
+  geom_text(vjust = 2.5, size = 5)
+
+ggplot(dfregion, aes(x = reorder(`Top Ten Geographic Sources by Sub Continent Region`,-percentVisits),
+                           y = percentVisits)) + 
+  geom_bar(stat = 'identity') +
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  xlab('Regions') +
+  ylab('Percentage of Visits') +
+  ggtitle('Percentage of Visits per Region') + 
+  scale_y_continuous(labels = scales::percent) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'))
+
+
+
+#Traffic source
+
+trafficSourcesDf <- trafficSourcesDf %>% 
+  mutate(percentVisits = Visits/sum(Visits))
+
+
+sourcebar<-ggplot(trafficSourcesDf[1:3,], 
+                  aes(x = reorder(`All Traffic Sources`,-percentVisits),
+                                              percentVisits,
+                  fill = as.factor(`All Traffic Sources`),
+                  label = paste0(round(percentVisits*100),'%')))
+sourcebar + 
+  geom_bar(stat = 'identity') +
+  xlab("Traffic Source") +
+  ylab("Visits %") +
+  ggtitle("Total Visits per Traffic Sources") + 
+  scale_y_continuous(labels = scales::percent) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'),
+        legend.position = 'none') +
+  geom_text(vjust = 2.5, size = 5)
+
+
+
+
+#Referring sites
+
+View(topTenRefSitesDf)
+topTenRefSitesDf <- topTenRefSitesDf %>% 
+  mutate(percentVisits = Visits/sum(Visits))
+
+otherRefSitesPercent <- topTenRefSitesDf %>% 
+  subset(percentVisits < 0.1,select = percentVisits) %>% sum()
+
+otherRefSitesSum <- topTenRefSitesDf %>% 
+  subset(percentVisits < 0.1,select = Visits) %>% sum()
+
+
+topTenRefSitesDf <- topTenRefSitesDf %>% 
+  add_row(`Top Ten Referring Sites` = 'Other',
+          Visits = otherRefSitesSum,
+          percentVisits = otherRefSitesPercent)
+
+topTenRefSitesDf <- topTenRefSitesDf[order(-topTenRefSitesDf$Visits), ]
+
+
+topTenRefSitesDf[1:4,] %>% 
+  ggplot(aes(x = reorder(`Top Ten Referring Sites`, - percentVisits),
+             y = percentVisits,
+             fill = as.factor(`Top Ten Referring Sites`),
+             label = paste0(round(percentVisits*100),'%'))) +
+  geom_bar(stat = 'identity') + 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  scale_y_continuous(labels = scales::percent) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'),
+        legend.position = 'none') +
+  xlab("Traffic Source") +
+  ylab("Visits %") +
+  ggtitle("Percentage of Total Visits per Traffic Sources") + 
+  geom_text(vjust = 1.8, size = 5)
+
+
+
+#Search engine
+
+dfsearcheng <- dfsearcheng %>%
+  mutate(percentVisits = Visits/sum(Visits))
+
+otherSearchEngSum <- dfsearcheng %>% 
+  subset(percentVisits < 0.8,select = Visits) %>% sum()
+
+otherSearchEngPerc <- dfsearcheng %>% 
+  subset(percentVisits < 0.8,select = percentVisits) %>% sum()
+
+dfsearcheng <- dfsearcheng %>% 
+  add_row(`Top Ten Search Engine Sources of Visits` = 'Other',
+          Visits = otherSearchEngSum,
+          percentVisits = otherSearchEngPerc)
+
+dfsearcheng <- dfsearcheng[order(-dfsearcheng$Visits), ]
+
+
+dfsearcheng[1:2,] %>% 
+  ggplot(aes(x = reorder(`Top Ten Search Engine Sources of Visits`, - percentVisits),
+             y = percentVisits, 
+             label = paste0(round(percentVisits * 100,2),'%'),
+             fill = as.factor(percentVisits))) +
+  geom_bar(stat = 'identity') + 
+ geom_text(vjust = 2.5, size = 5)+ 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  scale_y_continuous(labels = scales::percent) + 
+  theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        title = element_text(size=14,face="bold"),
+        plot.subtitle = element_text(size=10,colour = '#8e918f'),
+        legend.position = 'none') +
+  xlab("Traffic Source") +
+  ylab("Visits %") +
+  ggtitle("Percentage of Total Visits per Traffic Sources")  
+
+
+searchengbar<-plot_ly(dfsearcheng, x = ~dfsearcheng$`Top Ten Search Engine Sources of Visits`, y = ~dfsearcheng$Visits, mode='lines')
+
+searchengbar %>% layout(xaxis = list(title="Search Engine Source"), yaxis = list(title = "Visits"))
+
+
 
 
 # Talya Q2 a,b ------------------------------------------------------------
