@@ -136,3 +136,65 @@ convertQAWeeksToPeriod <- function(dataFrame){
   return(dataFrame)
 
 }
+
+
+
+# This function creates the lagged Difference of a given Dataframe
+# It outputs a List, this is done in order to be able to store
+# different variable lengths.
+
+diffLag <- function(lagWeeks,nameOfCol, nameOfDF){
+  
+  tempObjList <- list()
+  
+  for(name in nameOfCol){
+    
+    laggedName <- paste('Lagged_',name)
+    tempObjList[[laggedName]] <- nameOfDF[[name]] %>%
+      diff(lag = lagWeeks) %>%
+      append(values = rep(0,
+                          nrow(nameOfDF) - nrow(nameOfDF) + lagWeeks ),
+             after = 0)
+    
+  }
+  
+  return(tempObjList)
+  
+}
+
+
+# This function crates a dataframe with 
+# n lagged weeks Revenue.
+#  I.e. Revenue shifts m rows. 
+# Then n is indexed from m+1 to nrow(df)
+# The output of this function is the DF that 
+# is going to be used in the modelling
+
+laggedModelRevPrep <- function(lagWeeks,columnName,dataFrameName) {
+  
+  # The lagged dataframe is created
+  tempDiffLagDf <- diffLag(lagWeeks,columnName,
+                           dataFrameName) %>% 
+    unlist() %>% 
+    matrix( nrow=nrow(dataFrameName), 
+            byrow=FALSE)
+  
+  # Name of lagged revenue is creted
+  colnames(tempDiffLagDf) <- paste('Lagged_',columnName,sep = '')
+  
+  # Following columns Dropped: 
+  # Week (2008-2009), Revenue, date, period, % New Visits, Profit, Lbs. Sold
+  # This is done to not include any of this columns in the model
+  dataFrameName[,c(-1,-9,-13,-14,-8,-10)]
+  
+  tempDiffLagDf <- tempDiffLagDf %>% 
+    cbind(dataFrameName[,c(-1,-9,-13,-14,-8,-10)])
+  
+  startIndex <- lagWeeks + 1
+  
+  tempDiffLagDf <-tempDiffLagDf[startIndex:nrow(tempDiffLagDf), ]
+  
+  return(tempDiffLagDf)
+}
+
+

@@ -29,14 +29,17 @@ library(stringr)
 library(plotly)
 library(tidyr)
 library(readr)
+library(MASS)
+library(caret)
 
+source('helperFunctions.R')
 
 
 
 
 # PreProcessing -----------------------------------------------------------
 
-source('helperFunctions.R')
+
 
 visitsWeek <- read_excel("webAnalyticsCase.xls",
                          sheet = "Weekly Visits")
@@ -70,7 +73,7 @@ qaDf <- convertQAWeeksToPeriod(qaDf)
 qaDf <- read_csv('mergedVisitsFinancialsWithDateCol.csv')
 
 #DF only used in Q2 for additional column "Rev/UV"
-FV_P <- read_excel("Web_FinVists_Periods.xlsx") 
+FV_P <- read_excel("Web_FinVists_Periods.xlsx")
 
 # Carolina Q1 -------------------------------------------------------------
 
@@ -213,33 +216,18 @@ visitsFinancialsForVisits %>%
 
 incrementalDate <- visitsFinancials[15:66,]
 
-# This function creates the lagged Differene of a given Dataframe
-  # It outputs a List, this is done in order to be able to store
-  # different variable lengths.
-
-diffLag <- function(lagWeeks,nameOfCol, nameOfDF){
-  
-  tempObjList <- list()
-  
-  for(name in nameOfCol){
-
-    laggedName <- paste('Lagged_',name)
-    tempObjList[[laggedName]] <- nameOfDF[[name]] %>%
-                          diff(lag = lagWeeks) %>%
-                            append(values = rep(0,
-                                  nrow(nameOfDF) - nrow(nameOfDF) + lagWeeks ),
-                              after = 0)
-    
-    }
-  
-  return(tempObjList)
-  
-}
 
 
-# Incremental Revenue Modelling 
+
+
+# Incremental Revenue  
 # First, a dataframe all the 1-week lagged variables is created
 # This is done in order to reuse any lagged difference variable in the future
+
+
+# This function creates the lagged Difference of a given Dataframe
+# It outputs a List, this is done in order to be able to store
+# different variable lengths.
 
 # DiffLag lags this variables and returns a list
 laggedList <- diffLag(2,c("Visits",
@@ -402,34 +390,6 @@ columnNames <-c("Visits",
 # The output of this function is the DF that 
  # is going to be used in the modelling
 
-laggedModelRevPrep <- function(lagWeeks,columnName) {
-  
-  # The lagged dataframe is created
-  tempDiffLagDf <- diffLag(lagWeeks,columnName,
-                           qaDf) %>% 
-    unlist() %>% 
-    matrix( nrow=nrow(qaDf), 
-            byrow=FALSE)
-  
-  # Name of lagged revenue is creted
-  colnames(tempDiffLagDf) <- paste('Lagged_',columnName,sep = '')
- 
-  # Following columns Dropped: 
-  # Week (2008-2009), Revenue, date, period, % New Visits, Profit, Lbs. Sold
-  # This is done to not include any of this columns in the model
-  qaDf[,c(-1,-9,-13,-14,-8,-10,-11)]
-  
-  tempDiffLagDf <- tempDiffLagDf %>% 
-    cbind(qaDf[,c(-1,-9,-13,-14,-8,-10,-11)])
-  
-  startIndex <- lagWeeks + 1
-  
-  tempDiffLagDf <-tempDiffLagDf[startIndex:nrow(tempDiffLagDf), ]
-  
-  return(tempDiffLagDf)
-}
-
-
 
 # Incremental Sales have the best fit on the 2nd week lag R2 = 0.20
 # Data better to predict values in 2 weeks. This is the prediction to of 
@@ -437,41 +397,40 @@ laggedModelRevPrep <- function(lagWeeks,columnName) {
 
 for (i in 1:10){
   
-  laggedLmDf <- laggedModelRevPrep(i,"Revenue")
+  laggedLmDf <- laggedModelRevPrep(lagWeeks = i, 
+                                   columnName = "Revenue",
+                                   dataFrameName = visitsFinancials)
   
-  laggedModelTemp <- lm(laggedLmDf$Lagged_Revenue ~ . ,data = laggedLmDf) %>% summary()
+  laggedModelTemp <- lm(laggedLmDf$Lagged_Revenue ~ . ,
+                        data = laggedLmDf) %>% 
+                            summary()
   
-  paste('Lag:',1,' --- ', print(laggedModelTemp$r.squared),'\n')
+  paste('Lag:',1,' --- ', print(laggedModelTemp$adj.r.squared),'\n')
   
   
 }
 
 # THIS IS CREATING A MODEL FOR INCREMENTAL SALES
-# 4 WEEKS IS THE OPTIMAL POINT IN TIME
-# VISITS AND UNIQUE VISITS ARE THE ONLY SIGNIFICANT VARIABLES < 0.05 
-# THE INTERPRETATION HAS NO LOGIC BUSINESS IMPLICATION, 
-  # E.G. THE HIGHER THE BOUNCE RATE, THE HIGHER THE SALES 
-# ADJ R SQUARED IS 0.122 AND MULTIPLE R SQUARED IS 0.194, MODEL P VALUE: 0.02981
+# 2 WEEKS IS THE OPTIMAL POINT IN TIME
 
-# laggedIncLbsSold <- laggedModelRevPrep(4,"Lbs. Sold")
+
+# Call:
+#   lm(formula = laggedIncRevDf$Lagged_Revenue ~ Visits + `Unique Visits` + 
+#        Pageviews + `Avg. Time on Site (secs.)` + `Lbs. Sold`, data = laggedIncRevDf)
 # 
-# laggedModel <- lm(`Lagged_Lbs. Sold` ~ . , data = laggedIncLbsSold)
-# lm(formula = `Lagged_Lbs. Sold` ~ Visits + `Unique Visits` + 
-#      `Pages/Visit` + `Bounce Rate` + Inquiries, data = laggedIncLbsSold) %>% summary()
 # Coefficients:
-#   Estimate Std. Error t value Pr(>|t|)   
-# (Intercept)     -103565.93   57951.88  -1.787  0.07933 . 
-# Visits              254.68      79.88   3.188  0.00234 **
-# `Unique Visits`    -264.50      82.26  -3.216  0.00216 **
-# `Pages/Visit`     15866.72    9465.35   1.676  0.09926 . 
-# `Bounce Rate`     99188.50   58121.13   1.707  0.09344 . 
-# Inquiries          -663.82     414.67  -1.601  0.11504
+#   Estimate Std. Error t value Pr(>|t|)    
+# (Intercept)                 -4.246e+05  1.545e+05  -2.749  0.00796 ** 
+#   Visits                      -2.661e+03  1.504e+03  -1.769  0.08207 .  
+# `Unique Visits`              2.027e+03  1.430e+03   1.417  0.16174    
+# Pageviews                    4.708e+02  1.423e+02   3.308  0.00162 ** 
+# `Avg. Time on Site (secs.)` -3.021e+03  1.581e+03  -1.910  0.06102 .  
+# `Lbs. Sold`                  2.426e+01  3.445e+00   7.044 2.48e-09 ***
+# Multiple R-squared:  0.5715,	Adjusted R-squared:  0.5345 
 
-# Now we take a closer look to the model
-# Page views is the only significant variable of the model
-# Beta Estimate is positive
-
-laggedIncRevDf <- laggedModelRevPrep(2, "Revenue")
+laggedIncRevDf <- laggedModelRevPrep(lagWeeks = 2, 
+                                     columnName = "Revenue",
+                                     dataFrameName = visitsFinancials)
 
 
 laggedModel <- lm(laggedIncRevDf$Lagged_Revenue ~ . ,data = laggedIncRevDf) 
@@ -479,55 +438,86 @@ laggedModel %>% summary()
 
 
 # Variable selection through stepwise regression
-library(MASS)
 stepAIC(laggedModel, direction = 'backward')
 
-# The linear combination of visits and pageviews yields the best model
-# The model has a p-value of 0.002 and an R square of 0.15
-# Multiple R-squared:  0.2097,	Adjusted R-squared:  0.1109 
-# Beta Coefficients: 
-  # Visits         -638
-  # Pageviews       491
 
-laggedIncRevFinal <-lm(Lagged_Revenue ~ Visits + 
-     Pageviews, data = laggedIncRevDf)
+laggedIncRevFinal <-lm(formula = laggedIncRevDf$Lagged_Revenue ~ Visits +
+                         Unique_Visits +
+                         Pageviews + 
+                         `Avg._Time_on_Site_(secs.)` + 
+                         Lbs._Sold, 
+                       data = laggedIncRevDf)
 
-laggedIncRevFinal  %>% summary()
-
-require(Mcomp)
-
-# Visualizing Multiple Regression
-# Probably including this inthe appendix
-library(ggiraphExtra)
-ggPredict(laggedIncRevFinal, interactive = TRUE)
+laggedIncRevFinal  %>% 
+  summary()
 
 
+
+
+# Variable importance, standardized coeffs vs Caret Variable Importance
+  # Caret's variable importance evaluates the absolute value of the T statistic 
+    # of each variable
+scaledLagIncRevDF <- scale(laggedIncRevDf) %>% as.data.frame()
+standardCoeffIncRevDf <- lm(laggedIncRevDf$Lagged_Revenue ~ 
+                                Visits + 
+                              Unique_Visits +
+                              Pageviews + 
+                              `Avg._Time_on_Site_(secs.)` + 
+                              Lbs._Sold, 
+                          data = laggedIncRevDf) %>%  
+                      coefficients() %>% 
+                    as.data.frame() 
+
+# Standardized Coeffs
+standardCoeffIncRevDf %>% round(2)
+# Caret's variable importance
+varImp(laggedIncRevFinal)
+
+# We already now that Lbs. Sold is the most important variable of the model, 
+# it explainsaround 40% of the variance in Revenue 
+
+#________________________________________
+# INTERPRETATION: 
 # The less amount of weekly visits and the greater amount of weekly page views 
-# will yield
-# a better revenue in approximately 2 weeks
+# will yield a better revenue in approximately 2 weeks
+#________________________________________
+
+# Let's take a look if we can model the Lbs. Sold! # This was previously done
+# Because it was one of the most
+
+# Incremental Sales (LBS.Sold model):
+# THIS IS CREATING A MODEL FOR INCREMENTAL SALES - Lbs.Sold (4 weeks)
+# VISITS AND UNIQUE VISITS ARE THE ONLY SIGNIFICANT VARIABLES < 0.05 
+# THE INTERPRETATION HAS NO LOGIC BUSINESS IMPLICATION, 
+# E.G. THE HIGHER THE BOUNCE RATE, THE HIGHER THE SALES 
+# ADJ R SQUARED IS 0.122 AND MULTIPLE R SQUARED IS 0.194, MODEL P VALUE: 0.02981
+
 
 # Lead Revenue Model ----------------------------------------------------
 
 
-# Now let's see how we can improve the future revenue magnitude # 
+# Now let's see how we can predict the future revenue magnitude # 
 
-# We print the output up to a 10-week lag
+# We print the output up to a 15-week lead
 
-for(lag in 1:30){
+for(leadNum in 1:15){
   
   # CHANGED LAGGED TO LEAD
-  laggedRev <- lead(qaDf$Revenue,n = lag)
-  laggedRev[is.na(laggedRev)] <- 0
-  laggedQa <- qaDf[,c(-1,-9,-13,-14,-8,-10,-11)]
-  laggedQa$laggedRev <- laggedRev
-  # laggedQa <- laggedQa %>% scale() %>% as.data.frame()
-  startIndex1 <- lagNumber +1
-  laggedQa <-laggedQa[startIndex1:nrow(laggedQa), ]
+  leadNumber <- leadNum
+  leadRev <- lead(qaDf$Revenue,n = leadNum)
+  leadRev[is.na(leadRev)] <- 0
+  leadQa <- qaDf[,c(-1,-9,-13,-14,-8,-10)]
+  leadQa$leadRev <- leadRev
+  leadQa <- leadQa %>% scale() %>% as.data.frame()
+  stopIndex1 <- nrow(leadQa) - leadNumber 
+  leadQa <-leadQa[1:stopIndex1,, ]
   
-  # print(cor(qaModel$laggedRev, qaModel$`Unique Visits`))
-  tempModel <- lm(laggedQa$laggedRev ~ . , data = laggedQa) %>% summary()
-  tempModel$adj.r.squared %>% print()
-  
+  # print(cor(qaModel$leadRev, qaModel$`Unique Visits`))
+  tempModel <- lm(leadQa$leadRev ~ . , data = leadQa)
+  library(MASS)
+  steps1 <- stepAIC(tempModel, direction = 'backward', trace = 0) %>% summary()
+  # tempModel$adj.r.squared %>% print()
+  print(paste(leadNumber, ' ', round(steps1$adj.r.squared,3)))
 }
 
 # MODEL BEFORE: More in detail, best model .16 R squared 3 week lag
@@ -537,8 +527,9 @@ for(lag in 1:30){
 # THE LAG SHOULDNT HAVE BEEN USED BECAUSE WE WERE TRYING TO PREDICT 
 # PASTA DATA WITH FUTURE DATA (LAG ROLLS ROWS UP, NOT DOWN)
 # http://b2b-marketingblog.activeconversion.com/industrial/high-bounce-rate/
+
 # Call:
-#   lm(formula = qaModel$laggedRev ~ `Pages/Visit` + `Avg._Time_on_Site_(secs.)` + 
+#   lm(formula = qaModel$leadRev ~ `Pages/Visit` + `Avg._Time_on_Site_(secs.)` + 
 #        Bounce_Rate + `%_New_Visits` + Inquiries, data = qaModel)
 # 
 # Residuals:
@@ -560,29 +551,58 @@ for(lag in 1:30){
 # Multiple R-squared:  0.4565,	Adjusted R-squared:  0.4062 
 # F-statistic: 9.073 on 5 and 54 DF,  p-value: 2.624e-06
 
+qaDf %>%
+  ggplot() + 
+  geom_line()
 
 leadNumber <- 6
-qaModel <- visitsFinancials[,c(-1,-9,-13,-14,-10,-11)]
+qaModel <- visitsFinancials[,c(-1,-9,-13,-14,-10)]
 leadRev <- lead(qaDf$Revenue,n = leadNumber) # CHANGED LAG TO LEAD
 leadRev[is.na(leadRev)] <- 0
 qaModel$leadRev <- leadRev
-startIndex <- leadNumber +1
-qaModel <-qaModel[startIndex:nrow(qaModel), ]
+stopIndex <- nrow(qaModel) - leadNumber 
+qaModel <-qaModel[1:stopIndex, ]
 # qaModel<- scale(qaModel) %>% as.data.frame()
 
 # Check Bounce Rate and Inquiries
-qaLagRev <- lm(qaModel$leadRev ~ . , data = qaModel)
-qaLagRev  %>% summary()
+qaLeadRev <- lm(qaModel$leadRev ~ . , data = qaModel)
+qaLeadRev  %>% summary()
 
 
 # Variable Selection
 library(MASS)
-stepAIC(qaLagRev, direction = 'backward')
+steps<- stepAIC(qaLeadRev, direction = 'backward')
 
-leadModel <- lm(formula = qaModel$leadRev ~ `Pages/Visit` + `Avg._Time_on_Site_(secs.)` + 
-     Bounce_Rate + `%_New_Visits` + Inquiries, data = qaModel) 
+# BEST MODEL 
+  # THe lagged Difference model won
+leadBestMod <- lm(formula = qaModel$leadRev ~ Visits + Unique_Visits + `Pages/Visit`, 
+   data = qaModel)
 
-leadModel %>% summary()
+leadBestMod %>% summary()
+
+colnames(qaModel)[c(4,5,7)] <- c('pagesPerVisit', 'avgTimeOnSite','percentNewVisits' )
+# 
+# Call:
+#   lm(formula = qaModel$leadRev ~ Visits + Unique_Visits + `Pages/Visit`, 
+#      data = qaModel)
+# 
+# Residuals:
+#   Min      1Q  Median      3Q     Max 
+# -284532 -104709  -10660   99071  375850 
+# 
+# Coefficients:
+#   Estimate Std. Error t value Pr(>|t|)   
+# (Intercept)   -200926.5   207340.3  -0.969  0.33668   
+# Visits           1886.4      929.1   2.030  0.04709 * 
+#   Unique_Visits   -1870.9      963.9  -1.941  0.05731 . 
+# `Pages/Visit`  242070.7    74419.2   3.253  0.00194 **
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# Residual standard error: 144900 on 56 degrees of freedom
+# Multiple R-squared:  0.2877,	Adjusted R-squared:  0.2495 
+# F-statistic: 7.539 on 3 and 56 DF,  p-value: 0.0002533
+
 
 # Checking nonlinear model 
 # library(randomForest)
@@ -597,57 +617,39 @@ qaModel$date <- visitsFinancials$date[7:nrow(visitsFinancials)]
 
 library(ggpubr)
 
-p1 <-  ggplot(data = qaModel, mapping = aes(x = date, y = laggedRev)) + 
+p1 <-  ggplot(data = qaModel, mapping = aes(x = date, y = leadRev)) + 
   geom_line(stat = "identity") 
 p1
 
-p2 <-  ggplot(data = qaModel, mapping = aes(x = date, y = Inquiries)) + 
+p2 <-  ggplot(data = qaModel, mapping = aes(x = date, y = Visits)) + 
   geom_line(stat = "identity")
 p2
 
-ggarrange(p1,p2)
+subplot(p1, p2, nrows = 2, margin = 0.04, heights = c(0.6, 0.4),
+        shareX = TRUE,
+        shareY = TRUE)
+
+
+ggplotly(qaModel %>%
+  ggplot() +
+  geom_point(aes(x = Visits, 
+             y = leadRev)))
 
 library(plotly)
 ggplotly(qaModel %>%
   ggplot() +
-    geom_point(aes(x = Bounce_Rate, y =  laggedRev)))
+    geom_point(aes(x = Bounce_Rate, y =  leadRev)))
 
-# p <- ggplot(data = d, mapping = aes(x = date, y = y)) +
-#   facet_grid(panel~., scale="free") +
-#   geom_line(data = d1, stat = "identity") +
-#   geom_tile(data=d2, mapping=aes(colour=z, fill=z), stat = "identity")
-# p
-
+# Example of how double Y axis can deform the data!!  
 ggplot(qaModel, aes(x = date)) + 
-  geom_line(aes(y = laggedRev, colour = "Revenue")) + 
+  geom_line(aes(y = leadRev, colour = "Revenue")) + 
   geom_line(aes(y = Inquiries*100000, colour = "Inquiries")) +
   scale_y_continuous(sec.axis = sec_axis( ~ . /100000, name = "Inquiries"))
 
 
 
-# Best Linear Model for lagged Revenue of 3 weeks
-# The more Visits, Pages/Visit, AvgTime, BounceRate, and inquiries, 
-# The higher the revenue in 3 weeks
-# The less amount of pageViews, the higher revenue in 3 weeks. 
-# THis model doesn't make much sense, the interecept is positive despite they are 
-# losing money in the future!  
-# Visits                       1.082930e+00 # NOT SIGNIFICANT!
-# Pageviews                   -1.152345e+00
-# `Pages/Visit`                1.116428e+00
-# `Avg. Time on Site (secs.)`  6.498485e-01
-# `Bounce Rate`                1.615064e+00
-# Inquiries                    2.901167e-01
+ 
 
-lm(formula = qaModel$laggedRev ~ Visits + Unique_Visits + `Pages/Visit`, 
-   data = qaModel) %>% summary()
-
-colnames(qaModel)[c(4,5,7)] <- c('pagesPerVisit', 'avgTimeOnSite','percentNewVisits' ) 
-
-qaLagRevBest <- lm(formula = laggedRev ~ Visits + Pageviews + pagesPerVisit + 
-                     avgTimeOnSite + Bounce_Rate + Inquiries, 
-                   data = qaModel) 
-
-qaLagRevBest %>% summary()
 
 
 
